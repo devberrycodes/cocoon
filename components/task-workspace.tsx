@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Task, UpdateTaskInput } from "@/types/task";
 import type { Note, NoteColor } from "@/types/note";
 import { apiRequest } from "@/lib/client/api";
 import { useNotes } from "@/lib/client/use-notes";
+import { FocusMode } from "./focus-mode";
 import { TaskForm } from "./task-form";
 import { TaskCard } from "./task-card";
 import { CollapsiblePanel } from "./collapsible-panel";
@@ -19,6 +20,15 @@ export function TaskWorkspace() {
   const [attempt, setAttempt] = useState(0);
   const [message, setMessage] = useState("");
   const noteState = useNotes();
+  const picker = useRef<HTMLDialogElement>(null);
+  const navFocus = useRef<HTMLButtonElement>(null);
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const focusTrigger = useRef<HTMLButtonElement | null>(null);
+  const focusedTask = tasks.find(task => task.id === focusId);
+  function exitFocus() {
+    setFocusId(null);
+    requestAnimationFrame(() => focusTrigger.current?.focus());
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -61,7 +71,25 @@ export function TaskWorkspace() {
     requestAnimationFrame(() => document.getElementById("tasks-heading")?.focus());
   }
 
-  return <div className="workspace">
+  return <>
+    <header className="site-header"><div className="page-width">
+      <div><p className="brand">Cocoon</p><p className="brand-tagline">Make room for what matters.</p></div>
+      <button ref={navFocus} className="button primary" onClick={() => picker.current?.showModal()}>✦ Focus Mode</button>
+    </div></header>
+    <dialog ref={picker} className="focus-picker" aria-labelledby="picker-heading">
+      <div className="section-heading"><h2 id="picker-heading">What would you like to focus on?</h2><button className="button" onClick={() => picker.current?.close()}>Close</button></div>
+      {loading ? <p>Loading tasks…</p> : error ? <p role="alert">{error}</p> : tasks.length === 0 ? <p>Add a task to your workspace first, then come back here.</p> :
+        <ul>{tasks.map(task => <li key={task.id}><button className="button" onClick={() => {
+          picker.current?.close(); focusTrigger.current = navFocus.current; setFocusId(task.id);
+        }}>{task.title}{task.completed ? " · Completed" : ""}</button></li>)}</ul>}
+    </dialog>
+    <main id="main" className="page-width main-content">
+    <div className="page-intro"><h1>Your workspace</h1><p>Organise your tasks and keep your notes close.</p></div>
+    <div className={`workspace${focusedTask ? " is-focusing" : ""}`}>
+    {focusedTask && <FocusMode key={focusedTask.id} task={focusedTask}
+      notes={noteState.notes.filter(note => note.task_id === focusedTask.id)}
+      notesLoading={noteState.loading} notesError={noteState.error} onRetryNotes={noteState.refresh}
+      onComplete={() => updateTask(focusedTask.id, { completed: true })} onExit={exitFocus} />}
     <WorkspaceDecorations />
     <p className="sr-only" role="status">{message}</p>
 
@@ -88,6 +116,7 @@ export function TaskWorkspace() {
         <ul className="task-list" aria-label="Tasks">
           {tasks.map(task => <TaskCard key={task.id} task={task} notes={noteState.notes.filter(note => note.task_id === task.id)}
             notesLoading={noteState.loading} notesError={noteState.error} onRetryNotes={noteState.refresh}
+            onFocus={(task, trigger) => { focusTrigger.current = trigger; setFocusId(task.id); }}
             onUpdate={updateTask} onDelete={deleteTask} onAddNote={(content, clipboard) => addNote(content, task.id, clipboard)}
             onSaveNote={saveNote} onDeleteNote={deleteNote} />)}
         </ul>
@@ -100,5 +129,6 @@ export function TaskWorkspace() {
       onColorChange={changeNoteColor} onRetry={noteState.refresh} onAdd={content => addNote(content)} onSave={saveNote} onDelete={deleteNote} />
       </CollapsiblePanel>
     </div>
-  </div>;
+  </div>
+  </main></>;
 }

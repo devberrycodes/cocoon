@@ -7,7 +7,8 @@ import { TaskForm } from "./task-form";
 import { TaskNotes } from "./task-notes";
 import { useAction } from "@/lib/client/use-action";
 
-export function TaskCard({ task, notes, notesLoading, notesError, onRetryNotes, onUpdate, onDelete, onAddNote, onSaveNote, onDeleteNote }: {
+export function TaskCard({ task, notes, notesLoading, notesError, onRetryNotes, onUpdate, onDelete, onAddNote, onSaveNote, onDeleteNote, onFocus }: {
+  onFocus: (task: Task, trigger: HTMLButtonElement) => void;
   task: Task; notes: Note[]; notesLoading: boolean; notesError: string | null; onRetryNotes: () => void;
   onUpdate: (id: string, input: UpdateTaskInput) => Promise<void>;
   onDelete: (task: Task) => Promise<void>;
@@ -37,10 +38,11 @@ export function TaskCard({ task, notes, notesLoading, notesError, onRetryNotes, 
       {task.description && <p className="task-description">{task.description}</p>}
       <div className="task-meta">
         <span>{task.completed ? "Completed" : "Open"}</span>
-        <span className="capitalize">{task.priority} priority</span>
+        <span className={`priority-badge priority-${task.priority}`}>{task.priority === "high" && <span aria-hidden="true">⚑ </span>}{task.priority} priority</span>
         {task.due_date && <span>Due <time dateTime={task.due_date}>{task.due_date.slice(0, 10)}</time></span>}
       </div>
       <div className="actions">
+        <button className="button primary" disabled={pending} onClick={event => onFocus(task, event.currentTarget)}>Focus</button>
         <button className="button" disabled={pending} ref={editButton} onClick={() => { setEditingNotes(false); setEditing(true); }}>Edit task</button>
         <button className="button" disabled={pending} ref={notesButton} aria-expanded={editingNotes}
           onClick={() => setEditingNotes(value => !value)}>Edit notes</button>

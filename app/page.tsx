@@ -6,16 +6,10 @@ export default function Home() {
     <>
       <AmbientBackground />
       <a className="skip-link" href="#main">Skip to content</a>
-      <header className="site-header">
-        <div className="page-width">
-          <p className="brand">Cocoon</p>
-          <p className="muted">Make room for what matters.</p>
-        </div>
-      </header>
-      <main id="main" className="page-width main-content">
-        <div className="page-intro"><h1>Your workspace</h1><p className="muted">Organise your tasks and keep your notes close.</p></div>
-        <TaskWorkspace />
-      </main>
+      <div className="startup-screen" aria-hidden="true">
+        <span className="startup-word">{Array.from("cocoon").map((letter, index) => <span key={index} style={{ animationDelay: `${index * 110}ms` }}>{letter}</span>)}</span>
+      </div>
+      <TaskWorkspace />
     </>
   );
 }

@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 :root {
+  --font-brand: Georgia, "Times New Roman", serif;
+  --font-heading: "Trebuchet MS", "Avenir Next", "Segoe UI", sans-serif;
   --background: #f5eeee;
   --foreground: #36272c;
   --surface: #fff8ee;
@@ -20,13 +22,14 @@ button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: wait; opacity: .6; }
 :focus-visible { outline: 3px solid #395f91; outline-offset: 3px; }
+h1, h2, h3, h4 { font-family: var(--font-heading); }
 h1 { font-size: clamp(1.7rem, 4vw, 2.2rem); font-weight: 700; letter-spacing: -.025em; }
 h2 { font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem; }
 h3 { font-size: 1.05rem; font-weight: 600; overflow-wrap: anywhere; }
 .page-width { max-width: 1600px; width: 100%; margin-inline: auto; padding-inline: clamp(1rem, 4vw, 2rem); }
 .site-header { background: var(--surface); border-bottom: 1px solid var(--border); padding-block: 1.1rem; }
 .site-header .page-width { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
-.brand { font-weight: 750; font-size: 1.4rem; letter-spacing: -.04em; }
+.brand { font-family: var(--font-brand); font-weight: 400; font-size: 2rem; line-height: 1.15; letter-spacing: .04em; }
 .main-content { padding-block: 2rem 4rem; }
 .page-intro { margin-bottom: 1.8rem; }
 .muted { color: var(--muted); font-size: .92rem; }
@@ -198,7 +201,7 @@ form[aria-label="Edit note"] textarea, .clipboard-entry input, .initial-note tex
   --tasks-width: 1fr;
   --notes-width: 1.15fr;
   --create-width: 1.05fr;
-  --clipboard-tint: #d992a659;
+  --clipboard-tint: #e9bccab3;
   --collapsed-width: 52px;
 }
 :focus-visible { outline-color: var(--accent); }
@@ -221,8 +224,8 @@ form[aria-label="Edit note"] textarea, .clipboard-entry input, .initial-note tex
 .button.primary:hover:not(:disabled) { background: var(--accent-hover); }
 .button.danger { color: var(--accent); }
 .task-card > .actions { gap: .2rem; }
-.task-card > .actions .button { font-size: .78rem; padding-inline: .5rem; background: transparent; }
-.task-card > .actions .button:hover:not(:disabled), .button[aria-expanded="true"] { background: #76344c12; color: var(--accent); }
+.task-card > .actions .button:not(.primary) { font-size: .78rem; padding-inline: .5rem; background: transparent; }
+.task-card > .actions .button:not(.primary):hover:not(:disabled), .button[aria-expanded="true"] { background: #76344c12; color: var(--accent); }
 .field input, .field select, .field textarea, .initial-note textarea { border-color: #88647450; border-radius: .65rem; }
 input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .collapsible-panel { position: relative; min-width: 0; z-index: 1; width: 100%; }
@@ -289,3 +292,48 @@ input[type="checkbox"], input[type="range"] { accent-color: var(--accent); }
 .audio-player input:disabled { opacity: .45; cursor: default; }
 .music-rail:not(.is-collapsed) > .panel-toggle { top: .35rem; right: .35rem; background: transparent; border: 0; min-width: 44px; padding: .3rem; gap: .15rem; }
 .music-rail:not(.is-collapsed) > .panel-toggle svg { width: 14px; height: 14px; }
+
+/* Focus Mode preserves the mounted workspace and current music player. */
+.workspace.is-focusing { display: flex; flex-direction: column; align-items: center; gap: 1.5rem; }
+.is-focusing > .create-panel, .is-focusing > .tasks-rail, .is-focusing > .workspace-decorations,
+.is-focusing .notes-rail { display: none; }
+body:has(.is-focusing) .site-header, body:has(.is-focusing) .page-intro { display: none; }
+.is-focusing > .clipboard-column { order: -1; width: min(100%, 380px); align-self: flex-end; }
+.focus-card { width: min(100%, 640px); padding: clamp(1.25rem, 3vw, 2.5rem); background: #fae9eef5; border-color: #76344c55; backdrop-filter: blur(6px); }
+.focus-card h2 { font-size: 1.65rem; overflow-wrap: anywhere; margin-bottom: .6rem; }
+.focus-card .section-heading { padding: 0; }
+.focus-eyebrow { color: var(--accent); font-size: .8rem; letter-spacing: .06em; }
+.focus-timer { text-align: center; padding-block: 1.5rem; }
+.focus-timer label { margin-right: .75rem; font-size: .85rem; }
+.focus-timer select { background: #fff8ee; color: var(--accent); padding: .5rem; border: 1px solid var(--soft-border); border-radius: .65rem; }
+.focus-clock { font-size: clamp(3.5rem, 9vw, 5.5rem); font-variant-numeric: tabular-nums; color: var(--accent); letter-spacing: -.04em; }
+.focus-timer .actions { justify-content: center; }
+.focus-status { margin-top: 1rem; font-size: .85rem; color: var(--muted); }
+.focus-completed { color: var(--accent); font-weight: 600; }
+
+.priority-badge { display: inline-flex; align-items: center; gap: .3rem; padding: .15rem .5rem; border-radius: .5rem; text-transform: capitalize; }
+.priority-high { background: #f5d4de; color: #70243e; border: 1px solid #b65a77; font-weight: 700; }
+.priority-high > span { font-size: 1rem; line-height: 1; }
+
+.brand-tagline { font-size: .75rem; color: var(--muted); margin-top: .15rem; }
+.site-header .page-width { align-items: center; }
+.focus-picker { margin: auto; width: min(90vw, 520px); max-height: 75vh; overflow: auto; padding: 1.5rem; background: #fff0f3; color: var(--foreground); border: 1px solid #c99bad; border-radius: 1.25rem; box-shadow: 0 12px 60px #39212b40; }
+.focus-picker::backdrop { background: #39212b55; backdrop-filter: blur(3px); }
+.focus-picker ul { display: grid; gap: .5rem; }
+.focus-picker li .button { width: 100%; justify-content: flex-start; text-align: left; overflow-wrap: anywhere; }
+.focus-card { background: linear-gradient(145deg, #fff4eaf2, #f4dce9f2); border: 1px solid #b9809b; box-shadow: 0 14px 48px #42243130, inset 0 0 0 6px #fff8ef65; border-radius: 2rem; }
+.focus-card h2 { font-family: var(--font-heading); font-size: 1.9rem; }
+.focus-eyebrow { letter-spacing: .09em; font-size: .72rem; text-transform: uppercase; }
+.focus-dial { width: min(100%, 250px); aspect-ratio: 1; border-radius: 50%; margin: 1.25rem auto; padding: 5px; box-shadow: 0 5px 20px #76344c15; }
+.focus-dial-face { height: 100%; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fff8ed; border: 6px solid #f5e4eb; }
+.focus-dial .focus-clock { font-size: clamp(3rem, 8vw, 4rem); line-height: 1.2; font-weight: 500; }
+.focus-dial-star { font-size: 1.8rem; color: var(--accent); }
+.focus-dial-caption { font-size: .7rem; color: var(--muted); margin-top: .35rem; }
+.focus-timer { padding-block: .75rem; }
+.focus-timer .button { border-radius: 2rem; min-width: 76px; }
+.startup-screen { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: #702d43; color: #fff0dc; pointer-events: none; animation: startup-exit 1.4s linear forwards; }
+.startup-word { font-family: var(--font-brand); font-size: clamp(3rem, 12vw, 6rem); letter-spacing: .09em; }
+.startup-word span { display: inline-block; opacity: 0; animation: startup-letter 180ms ease-out forwards; }
+@keyframes startup-letter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes startup-exit { 0%, 78% { opacity: 1; visibility: visible; } 100% { opacity: 0; visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { .startup-word span { animation: none; opacity: 1; } .startup-screen { animation-duration: .2s; } }
