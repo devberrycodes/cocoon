@@ -1,5 +1,6 @@
 "use client";
 
+import { visualAssets } from "@/lib/visual-assets";
 import type { Note } from "@/types/note";
 import { NoteForm } from "./note-form";
 import { NoteCard } from "./note-card";
@@ -9,7 +10,10 @@ export function NotesPanel({ notes, loading, error, onRetry, onAdd, onSave, onDe
   onAdd: (content: string) => Promise<void>; onSave: (id: string, content: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }) {
-  return <section className="panel clipboard" aria-labelledby="notes-heading">
+  return <section className="panel clipboard" aria-labelledby="notes-heading"
+    style={visualAssets.clipboardTexture ? {
+      backgroundImage: `linear-gradient(#fff0d640, #fff0d640), url("${visualAssets.clipboardTexture}")`,
+    } : undefined}>
     <div className="clipboard-clip" aria-hidden="true" />
     <h2 id="notes-heading" tabIndex={-1}>General Notes</h2>
     <p className="muted clipboard-intro">Your clipboard for ideas, reminders, and notes you want to keep.</p>

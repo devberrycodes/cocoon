@@ -7,6 +7,8 @@ import { apiRequest } from "@/lib/client/api";
 import { useNotes } from "@/lib/client/use-notes";
 import { TaskForm } from "./task-form";
 import { TaskCard } from "./task-card";
+import { SpotifyPlaceholder } from "./spotify-placeholder";
+import { TaskCardPlant, WorkspaceDecorations } from "./workspace-decorations";
 import { NotesPanel } from "./notes-panel";
 
 export function TaskWorkspace() {
@@ -54,9 +56,11 @@ export function TaskWorkspace() {
   }
 
   return <div className="workspace">
+    <WorkspaceDecorations />
     <p className="sr-only" role="status">{message}</p>
 
       <section className="panel create-panel" aria-labelledby="create-heading">
+        <TaskCardPlant />
         <h2 id="create-heading">Add a task</h2>
         <TaskForm disabled={loading || Boolean(error)} onSave={async input => {
           const task = await apiRequest<Task>("/api/tasks", { method: "POST", body: JSON.stringify(input) });
@@ -83,12 +87,10 @@ export function TaskWorkspace() {
         </ul>
       </section>
     <div className="clipboard-column">
+      <SpotifyPlaceholder />
     <NotesPanel notes={noteState.notes.filter(note => note.task_id === null)} loading={noteState.loading} error={noteState.error}
       onRetry={noteState.refresh} onAdd={content => addNote(content)} onSave={saveNote} onDelete={deleteNote} />
-      <aside className="panel spotify-placeholder" aria-labelledby="spotify-heading">
-        <span className="pixel-music" aria-hidden="true">♫</span>
-        <div><h2 id="spotify-heading">A little background music</h2><p className="muted">Spotify · coming later</p><p className="muted">Your music corner. No playback connected yet.</p></div>
-      </aside>
+
     </div>
   </div>;
 }
