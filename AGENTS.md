@@ -1,9 +1,84 @@
-<!-- BEGIN:nextjs-agent-rules -->
+# AGENTS.md
 
-# This is NOT the Next.js you know
+## Project
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+Focus Room is a productivity-focused To-Do application built for HNG Internship Stage 1.
 
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+The application must support:
 
-<!-- END:nextjs-agent-rules -->
+- Task creation
+- Task viewing
+- Task editing
+- Task deletion
+- Task completion
+- Notes
+- Priority levels
+- Due dates
+- Focus Mode
+- Spotify playlist integration
+
+## Tech Stack
+
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- Supabase
+- PostgreSQL
+
+## Code Quality
+
+- Use TypeScript throughout the application.
+- Avoid using `any` unless absolutely necessary.
+- Write reusable components.
+- Keep components small and focused.
+- Use descriptive function and variable names.
+- Avoid duplicated logic.
+- Keep business logic separate from presentation logic.
+
+## Frontend
+
+- Use responsive layouts.
+- Components must work on mobile and desktop.
+- Follow the application's visual system consistently.
+- Use reusable UI components where possible.
+- Provide loading, error, empty and success states.
+
+## Backend
+
+- Validate all API input.
+- Return appropriate HTTP status codes.
+- Handle errors gracefully.
+- Never expose sensitive credentials to the client.
+- Store secrets in environment variables.
+
+## Database
+
+- Keep database access separated from UI components.
+- Use clear database table and column names.
+- Avoid destructive database operations without confirmation.
+
+## Testing
+
+- Write tests for every API endpoint created.
+- Test successful requests.
+- Test invalid input.
+- Test missing resources.
+- Test update operations.
+- Test delete operations.
+- Run tests after changing backend functionality.
+
+## Security
+
+- Never commit `.env` files.
+- Never expose private API keys.
+- Validate authentication where required.
+- Keep Spotify secrets server-side.
+
+## AI Development Rules
+
+- Make changes incrementally.
+- Do not rewrite working areas unnecessarily.
+- Explain significant architectural changes.
+- Run linting and tests after major changes.
+- Fix errors before moving to the next feature.
