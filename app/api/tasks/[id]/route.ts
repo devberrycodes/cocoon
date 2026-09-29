@@ -1,11 +1,9 @@
+import { validId } from "../../../../lib/validation.ts";
 import { deleteTask, getTask, updateTask } from "../../../../lib/tasks.ts";
 import { validateTaskFields } from "../../../../lib/task-validation.ts";
 
 type TaskContext = { params: Promise<{ id: string }> };
 
-function validId(id: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-}
 
 function notFound() {
   return Response.json({ error: "Task not found." }, { status: 404 });

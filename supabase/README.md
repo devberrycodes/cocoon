@@ -52,3 +52,32 @@ missing row to the anonymous client and therefore returns 404.
 Database errors are logged server-side. API errors remain generic and do not
 expose database details. Automated endpoint tests use mocked database responses
 and do not update or delete live tasks.
+
+## Notes
+
+Apply `migrations/20260929000002_create_notes.sql` once in the Supabase SQL
+Editor. It creates the notes table, content constraints, timestamps, task
+foreign key, index, and anonymous CRUD policies for the same shared no-auth
+model as tasks. Notes are publicly accessible to anyone with the project key.
+Deleting a task sets its notes' `task_id` to null so they remain in General
+notes. A trigger maintains `updated_at`, including when a task is unlinked.
+The app's public key cannot apply this migration.
+
+Notes endpoints:
+
+- `GET /api/notes`: all notes, newest first.
+- `GET /api/notes?task_id=<uuid>`: notes for a task.
+- `GET /api/notes?task_id=null`: standalone notes.
+- `POST /api/notes`: `{ "content": "Note text", "task_id": null }`; task ID is optional.
+- `GET /api/notes/<uuid>`: one note.
+- `PATCH /api/notes/<uuid>`: supplied `content` and/or `task_id` fields only.
+- `DELETE /api/notes/<uuid>`: empty 204 on success.
+
+Content is trimmed and must contain 1–10000 characters. Invalid input returns
+400, missing notes or linked tasks return 404, and database failures return a
+generic 500. Detailed row contents are not returned in API errors.
+
+Run `npm test` (Node 22.6+ with TypeScript stripping, or Node 24),
+`npm run lint`, `npx tsc --noEmit`, and `npm run build` to verify changes.
+Tests mock Supabase HTTP responses and never modify live data. Existing task
+CRUD tests are retained alongside the notes tests.
