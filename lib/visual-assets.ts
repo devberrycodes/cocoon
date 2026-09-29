@@ -16,7 +16,7 @@ export const visualAssets: {
   ],
   clipboardTexture: "/images/clipboard-texture.jpg",
   decorations: [
-    { slot: "plant", src: null }, // "/images/decor/pixel-plant.png"
+    { slot: "plant", src: "/images/decor/pixel-plant.png" },
     { slot: "cloud", src: null }, // "/images/decor/pixel-cloud.png"
     { slot: "desk", src: null }, // "/images/decor/pixel-desk-object.png"
   ],

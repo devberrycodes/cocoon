@@ -9,6 +9,7 @@ const detail = await import("../app/api/notes/[id]/route.ts");
 const { supabase } = await import("../lib/supabase.ts");
 const taskId = "00000000-0000-4000-8000-000000000001";
 const note: Note = {
+  color: "cream",
   source_task_title: null,
   id: "00000000-0000-4000-8000-000000000002", content: "Remember this", task_id: taskId,
   created_at: "2026-09-29T12:00:00Z", updated_at: "2026-09-29T12:00:00Z",
@@ -208,3 +209,43 @@ for (const task_id of [null, taskId]) {
     assert.deepEqual(rows, [copy]);
   });
 }
+
+for (const color of ["cream", "pink", "sage"] as const) {
+  test(`PATCH persists ${color} across subsequent reads without changing content`, async () => {
+    const response = await detail.PATCH(request("PATCH", { color }), context());
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).color, color);
+    const reloaded = await detail.GET(request("GET"), context());
+    const saved = await reloaded.json();
+    assert.equal(saved.color, color); assert.equal(saved.content, note.content);
+    assert.equal(saved.task_id, taskId);
+    const listed = await collection.GET(request("GET"));
+    assert.equal((await listed.json())[0].color, color);
+  });
+  test(`POST accepts ${color}`, async () => {
+    const response = await collection.POST(request("POST", { content: "Colored", color }));
+    assert.equal(response.status, 201); assert.equal((await response.json()).color, color);
+  });
+}
+for (const color of ["blue", "", null, 1, true]) {
+  test(`invalid color ${JSON.stringify(color)} is rejected on create and update`, async () => {
+    assert.equal((await collection.POST(request("POST", { content: "Note", color }))).status, 400);
+    assert.equal((await detail.PATCH(request("PATCH", { color }), context())).status, 400);
+    assert.equal(calls.length, 0);
+  });
+}
+test("notes without a saved color default to cream", async () => {
+  mock.method(globalThis, "fetch", async () => Response.json([{ ...note, color: null }]));
+  assert.equal((await (await collection.GET(request("GET"))).json())[0].color, "cream");
+  assert.equal((await (await detail.GET(request("GET"), context())).json()).color, "cream");
+});
+test("failed color update returns a safe error without changing stored color", async () => {
+  errorCode = "42501";
+  const response = await detail.PATCH(request("PATCH", { color: "pink" }), context());
+  assert.equal(response.status, 500); assert.deepEqual(await response.json(), { error: "Unable to update note." });
+  assert.equal(rows[0].color, "cream");
+});
+test("color update returns 404 for a missing note", async () => {
+  rows = [];
+  assert.equal((await detail.PATCH(request("PATCH", { color: "sage" }), context())).status, 404);
+});

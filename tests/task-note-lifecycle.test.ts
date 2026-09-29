@@ -15,6 +15,7 @@ const task: Task = {
   completed: false, priority: "medium", due_date: null, created_at: "2026-09-29T12:00:00Z", updated_at: "2026-09-29T12:00:00Z",
 };
 const note: Note = {
+  color: "cream",
   id: "00000000-0000-4000-8000-000000000002", task_id: task.id, content: "Test missing-task responses",
   source_task_title: null, created_at: task.created_at, updated_at: task.updated_at,
 };

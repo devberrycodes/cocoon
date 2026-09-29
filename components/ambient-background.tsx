@@ -39,7 +39,7 @@ export function AmbientBackground() {
 
   useEffect(() => {
     if (paused || reducedMotion || slides.length < 2) return;
-    const timer = window.setInterval(() => setActive(index => (index + 1) % slides.length), 10_000);
+    const timer = window.setInterval(() => setActive(index => (index + 1) % slides.length), 30_000);
     return () => window.clearInterval(timer);
   }, [paused, reducedMotion, slides.length]);
 

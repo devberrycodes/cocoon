@@ -21,6 +21,12 @@ export function validateNoteFields(body: unknown, mode: "create" | "update"): Re
     }
     data.task_id = fields.task_id;
   }
+  if ("color" in fields) {
+    if (fields.color !== "cream" && fields.color !== "pink" && fields.color !== "sage") {
+      return { error: "Note color must be cream, pink, or sage." };
+    }
+    data.color = fields.color;
+  }
   if (mode === "update" && Object.keys(data).length === 0) {
     return { error: "Provide at least one editable note field." };
   }

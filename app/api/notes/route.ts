@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     if (taskId && !task) {
       return Response.json({ error: "Linked task not found." }, { status: 404 });
     }
-    const input = { content: result.data.content ?? "", task_id: taskId };
+    const input = { content: result.data.content ?? "", task_id: taskId, ...(result.data.color ? { color: result.data.color } : {}) };
     const note = fields.add_to_clipboard === true
       ? await saveNoteWithClipboard(input)
       : await createNote(input);

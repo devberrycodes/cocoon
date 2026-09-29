@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import type { Task, UpdateTaskInput } from "@/types/task";
-import type { Note } from "@/types/note";
+import type { Note, NoteColor } from "@/types/note";
 import { apiRequest } from "@/lib/client/api";
 import { useNotes } from "@/lib/client/use-notes";
 import { TaskForm } from "./task-form";
 import { TaskCard } from "./task-card";
-import { SpotifyPlaceholder } from "./spotify-placeholder";
-import { TaskCardPlant, WorkspaceDecorations } from "./workspace-decorations";
+import { CollapsiblePanel } from "./collapsible-panel";
+import { AudioPlayer } from "./audio-player";
+import { WorkspaceDecorations } from "./workspace-decorations";
 import { NotesPanel } from "./notes-panel";
 
 export function TaskWorkspace() {
@@ -43,6 +44,11 @@ export function TaskWorkspace() {
     noteState.setNotes(current => current.map(note => note.id === id ? updated : note)); setMessage("Note saved.");
     if (clipboard) noteState.refresh();
   }
+  async function changeNoteColor(id: string, color: NoteColor) {
+    const updated = await apiRequest<Note>(`/api/notes/${id}`, { method: "PATCH", body: JSON.stringify({ color }) });
+    noteState.setNotes(current => current.map(note => note.id === id ? updated : note));
+    setMessage("Note color saved.");
+  }
   async function deleteNote(id: string) {
     await apiRequest<void>(`/api/notes/${id}`, { method: "DELETE" });
     noteState.setNotes(current => current.filter(note => note.id !== id)); setMessage("Note deleted.");
@@ -60,7 +66,6 @@ export function TaskWorkspace() {
     <p className="sr-only" role="status">{message}</p>
 
       <section className="panel create-panel" aria-labelledby="create-heading">
-        <TaskCardPlant />
         <h2 id="create-heading">Add a task</h2>
         <TaskForm disabled={loading || Boolean(error)} onSave={async input => {
           const task = await apiRequest<Task>("/api/tasks", { method: "POST", body: JSON.stringify(input) });
@@ -69,6 +74,7 @@ export function TaskWorkspace() {
           setMessage("Task added.");
         }} />
       </section>
+      <CollapsiblePanel kind="tasks" label="Tasks">
       <section className="panel tasks-panel" aria-labelledby="tasks-heading">
         <div className="section-heading">
           <h2 id="tasks-heading" tabIndex={-1}>Your tasks</h2>
@@ -86,11 +92,13 @@ export function TaskWorkspace() {
             onSaveNote={saveNote} onDeleteNote={deleteNote} />)}
         </ul>
       </section>
+      </CollapsiblePanel>
     <div className="clipboard-column">
-      <SpotifyPlaceholder />
+      <CollapsiblePanel kind="music" label="Music"><AudioPlayer /></CollapsiblePanel>
+      <CollapsiblePanel kind="notes" label="Notes">
     <NotesPanel notes={noteState.notes.filter(note => note.task_id === null)} loading={noteState.loading} error={noteState.error}
-      onRetry={noteState.refresh} onAdd={content => addNote(content)} onSave={saveNote} onDelete={deleteNote} />
-
+      onColorChange={changeNoteColor} onRetry={noteState.refresh} onAdd={content => addNote(content)} onSave={saveNote} onDelete={deleteNote} />
+      </CollapsiblePanel>
     </div>
   </div>;
 }

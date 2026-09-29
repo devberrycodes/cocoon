@@ -116,10 +116,24 @@ notes instead of deleting them.
   the task; they are never copied automatically.
 
 New/supplied due dates must be today or later (UTC calendar day). PATCH requests
-that omit due_date preserve it. The clipboard color menu is a local visual preview
-and resets on reload; no color column or external service is added.
+that omit due_date preserve it. The clipboard color menu saves through the notes API after the color migration below.
 
 After the migration, optionally run `supabase/tests/task_note_lifecycle.sql` in
 the SQL Editor. It exercises the real functions and cascading relationship using
 transaction-local fixtures and ends with ROLLBACK. API tests use mocked Supabase
 responses and cannot verify your live foreign key or RLS configuration.
+
+## Persistent note colors
+
+After migration 00004, run the entire
+`migrations/20260929000005_persist_note_colors.sql` file in Supabase SQL Editor.
+It adds `color` with default `cream`, backfills unset values, limits it to
+`cream`, `pink`, or `sage`, and updates the atomic note-copy function to preserve
+colors. Existing task/note content and RLS policies are unchanged. The agent has
+not applied it using the public key.
+
+POST notes accepts optional `color`; PATCH accepts `{ "color": "pink" }` without
+requiring content. GET returns the saved color. Omitted colors default to cream
+for new notes and remain unchanged on edits. Invalid colors return 400. Copies
+remain independent, including their colors. Apply the migration before deploying
+this version: queries now select the color column.

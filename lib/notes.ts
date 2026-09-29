@@ -1,7 +1,7 @@
 import { supabase } from "./supabase.ts";
 import type { Note, UpdateNoteInput } from "../types/note.ts";
 
-const columns = "id, content, task_id, source_task_title, created_at, updated_at";
+const columns = "id, content, color, task_id, source_task_title, created_at, updated_at";
 export class NoteTaskNotFoundError extends Error {}
 
 function databaseError(operation: string, error: { code: string; message: string }): never {
@@ -18,27 +18,27 @@ export async function listNotes(taskId?: string | null): Promise<Note[]> {
   const { data, error } = await query.returns<Note[]>();
   if (error) databaseError("list", error);
   if (!data) throw new Error("Unable to list notes.");
-  return data;
+  return data.map(withDefaultColor);
 }
 
 export async function getNote(id: string): Promise<Note | null> {
   const { data, error } = await supabase.from("notes").select(columns).eq("id", id).maybeSingle<Note>();
   if (error) databaseError("fetch", error);
-  return data;
+  return data ? withDefaultColor(data) : null;
 }
 
-export async function createNote(input: Pick<Note, "content" | "task_id"> & Partial<Pick<Note, "source_task_title">>): Promise<Note> {
+export async function createNote(input: Pick<Note, "content" | "task_id"> & Partial<Pick<Note, "source_task_title" | "color">>): Promise<Note> {
   const { data, error } = await supabase.from("notes").insert(input).select(columns).single<Note>();
   if (error) databaseError("create", error);
   if (!data) throw new Error("Unable to create note.");
-  return data;
+  return withDefaultColor(data);
 }
 
 export async function updateNote(id: string, input: UpdateNoteInput): Promise<Note | null> {
   const { data, error } = await supabase.from("notes")
     .update({ ...input, updated_at: new Date().toISOString() }).eq("id", id).select(columns).maybeSingle<Note>();
   if (error) databaseError("update", error);
-  return data;
+  return data ? withDefaultColor(data) : null;
 }
 
 export async function deleteNote(id: string): Promise<boolean> {
@@ -56,7 +56,7 @@ export async function saveNoteWithClipboard(input: UpdateNoteInput, id: string |
   const data: unknown = result;
   if (data === null) return null;
   if (!isNote(data)) throw new Error("Unable to save note.");
-  return data;
+  return data ? withDefaultColor(data) : null;
 }
 
 function isNote(value: unknown): value is Note {
@@ -67,4 +67,8 @@ function isNote(value: unknown): value is Note {
     "source_task_title" in value && (value.source_task_title === null || typeof value.source_task_title === "string") &&
     "created_at" in value && typeof value.created_at === "string" &&
     "updated_at" in value && typeof value.updated_at === "string";
+}
+
+function withDefaultColor(note: Note): Note {
+  return { ...note, color: note.color ?? "cream" };
 }
