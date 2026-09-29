@@ -1,7 +1,7 @@
 import { supabase } from "./supabase.ts";
-import type { CreateNoteInput, Note, UpdateNoteInput } from "../types/note.ts";
+import type { Note, UpdateNoteInput } from "../types/note.ts";
 
-const columns = "id, content, task_id, created_at, updated_at";
+const columns = "id, content, task_id, source_task_title, created_at, updated_at";
 export class NoteTaskNotFoundError extends Error {}
 
 function databaseError(operation: string, error: { code: string; message: string }): never {
@@ -27,7 +27,7 @@ export async function getNote(id: string): Promise<Note | null> {
   return data;
 }
 
-export async function createNote(input: CreateNoteInput): Promise<Note> {
+export async function createNote(input: Pick<Note, "content" | "task_id"> & Partial<Pick<Note, "source_task_title">>): Promise<Note> {
   const { data, error } = await supabase.from("notes").insert(input).select(columns).single<Note>();
   if (error) databaseError("create", error);
   if (!data) throw new Error("Unable to create note.");

@@ -100,13 +100,13 @@ test("POST trims the title, applies defaults, and ignores protected fields", asy
 
 for (const priority of ["low", "medium", "high"] as const) {
   test(`POST accepts ${priority} priority and optional fields`, async () => {
-    const created = { ...task, priority, description: "Notes", due_date: "2028-02-29" };
+    const created = { ...task, priority, description: "Notes", due_date: "2096-02-29" };
     databaseReply = () => Response.json(created, { status: 201 });
-    const response = await post({ title: task.title, priority, description: " Notes ", due_date: "2028-02-29" });
+    const response = await post({ title: task.title, priority, description: " Notes ", due_date: "2096-02-29" });
     assert.equal(response.status, 201);
     assert.deepEqual(await response.json(), created);
     assert.deepEqual(await calls[0].json(), {
-      title: task.title, priority, description: "Notes", due_date: "2028-02-29", completed: false,
+      title: task.title, priority, description: "Notes", due_date: "2096-02-29", completed: false,
     });
   });
 }

@@ -1,3 +1,5 @@
+import type { InitialTaskNote } from "./note.ts";
+
 export type TaskPriority = "low" | "medium" | "high";
 
 export interface Task {
@@ -18,3 +20,6 @@ export type CreateTaskInput = Pick<Task, "title"> &
 
 /** Omitted fields stay unchanged; null clears description or due_date. */
 export type UpdateTaskInput = Partial<CreateTaskInput>;
+
+export type CreateTaskRequest = CreateTaskInput & { notes?: InitialTaskNote[] };
+export type TaskNoteAction = "keep" | "delete";

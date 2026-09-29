@@ -81,3 +81,47 @@ Run `npm test` (Node 22.6+ with TypeScript stripping, or Node 24),
 `npm run lint`, `npx tsc --noEmit`, and `npm run build` to verify changes.
 Tests mock Supabase HTTP responses and never modify live data. Existing task
 CRUD tests are retained alongside the notes tests.
+
+## Clipboard and explicit task deletion
+
+Run **all of `migrations/20260929000003_task_note_lifecycle.sql`** in the Supabase
+SQL Editor before using the updated app. Do not rerun the original create-table
+migration on an existing database. The new migration:
+
+- adds nullable `notes.source_task_title`;
+- replaces the task foreign key with `ON DELETE SET NULL` (whatever its old name);
+- creates `delete_task_with_notes`, which locks the task, requires a choice when
+  notes exist, and either detaches or deletes its notes before deleting the task;
+- creates `create_task_with_notes`, which saves a task and its initial notes in
+  one transaction, rolling everything back if any note fails.
+
+Both functions use invoker permissions and existing anonymous RLS policies.
+There is no service-role bypass. A denied note operation rolls back the task
+deletion. The app deliberately does not fall back to a bare DELETE when the
+migration is missing. The migration does not delete existing tasks or notes.
+
+`DELETE /api/tasks/:id` is valid without a choice only if there are no attached
+notes. With notes, send `?notes=keep` or `?notes=delete`; omitting the choice
+returns 409. Preserved notes have `task_id = null` and the task's title copied to
+`source_task_title`. The clipboard refreshes after the transaction commits.
+
+A task's **description is not a note**. It is deleted with the task. The keep
+option only preserves records previously saved as notes. This migration cannot
+recover descriptions or notes that were already deleted.
+
+`POST /api/notes` accepts `add_to_clipboard: true` together with `task_id` to
+create one general note with server-derived task-title context. False/omitted
+keeps the note attached. Clients cannot set `source_task_title` directly.
+`POST /api/tasks` accepts optional `notes: [{ content, add_to_clipboard }]`
+(up to 50), using the atomic creation function when the array is nonempty.
+Task PATCH does not edit notes.
+
+New/supplied due dates must be today or later; dates are compared using the UTC
+calendar day in both the browser and server. Existing overdue tasks can still
+be completed, and PATCH requests that omit due_date do not change it.
+
+`supabase/tests/task_note_lifecycle.sql` is an optional SQL Editor regression
+check after the migration. It creates only transaction-local fixtures and ends
+with ROLLBACK. It verifies note preservation, source titles, explicit deletion,
+and rollback when initial-note validation fails. API tests mock database
+responses; this SQL check exercises the actual database functions.

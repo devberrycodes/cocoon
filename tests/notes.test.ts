@@ -9,6 +9,7 @@ const detail = await import("../app/api/notes/[id]/route.ts");
 const { supabase } = await import("../lib/supabase.ts");
 const taskId = "00000000-0000-4000-8000-000000000001";
 const note: Note = {
+  source_task_title: null,
   id: "00000000-0000-4000-8000-000000000002", content: "Remember this", task_id: taskId,
   created_at: "2026-09-29T12:00:00Z", updated_at: "2026-09-29T12:00:00Z",
 };
@@ -26,7 +27,7 @@ beforeEach(() => {
     calls.push(req);
     const url = new URL(req.url);
     if (errorCode) return Response.json({ code: errorCode, message: "private database detail", details: "private contents" }, { status: 400 });
-    if (url.pathname.endsWith("/tasks")) return Response.json(taskExists ? [{ id: taskId }] : []);
+    if (url.pathname.endsWith("/tasks")) return Response.json(taskExists ? [{ id: taskId, title: "Source task" }] : []);
     assert.equal(url.pathname, "/rest/v1/notes");
     const id = url.searchParams.get("id")?.slice(3);
     const filtered = id ? rows.filter(row => row.id === id) : rows;

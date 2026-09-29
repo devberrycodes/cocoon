@@ -1,3 +1,4 @@
+import { todayDate } from "./dates.ts";
 import type { UpdateTaskInput } from "../types/task.ts";
 
 type ValidationResult = { data: UpdateTaskInput; error?: never } | { error: string; data?: never };
@@ -36,6 +37,9 @@ export function validateTaskFields(body: unknown, mode: "create" | "update"): Va
         !date || !Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
         return { error: "Due date must be a valid YYYY-MM-DD date or null." };
       }
+    }
+    if (typeof value === "string" && value < todayDate()) {
+      return { error: "Due date cannot be in the past." };
     }
     input.due_date = value;
   }
