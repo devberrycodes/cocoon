@@ -10,9 +10,14 @@ const send=(method,params={})=>new Promise((resolve,reject)=>{const n=++id;pendi
 const run=async expression=>(await send('Runtime.evaluate',{expression,returnByValue:true,userGesture:true,awaitPromise:true})).result.value;
 await send('Page.enable');
 await send('Page.addScriptToEvaluateOnNewDocument', {source: `
-(()=>{ const task={id:'test-task',title:'Focus test task',description:'Keep it calm',priority:'high',completed:false,due_date:null,created_at:'2026-09-29',updated_at:'2026-09-29'};
+(()=>{ localStorage.setItem('cocoon:walkthrough-seen:v1','true'); const task={id:'test-task',title:'Focus test task',description:'Keep it calm',priority:'high',completed:false,due_date:null,created_at:'2026-09-29',updated_at:'2026-09-29'};
 const originalFetch=window.fetch;
 window.fetch=async (url, options={})=>{
+ if(String(url).includes('/auth/v1/')) {
+  const user={id:'10000000-0000-4000-8000-000000000001',aud:'authenticated',role:'authenticated',is_anonymous:true};
+  const token=btoa(JSON.stringify({alg:'HS256',typ:'JWT'}))+'.'+btoa(JSON.stringify({sub:user.id,exp:Math.floor(Date.now()/1000)+3600}))+'.test';
+  return Response.json({access_token:token,refresh_token:'test-refresh',expires_in:3600,token_type:'bearer',user});
+ }
  if(String(url).startsWith('/api/tasks')) {
   if(options.method==='PATCH') { window.lastUpdate=JSON.parse(options.body); Object.assign(task,window.lastUpdate); return Response.json(task); }
   return Response.json([task]);
@@ -23,12 +28,21 @@ window.fetch=async (url, options={})=>{
 await send('Page.navigate',{url:process.env.COCOON_URL || 'http://localhost:3015'});
 await new Promise(r=>setTimeout(r,1500));
 const click=async text=>{ await run(`Array.from(document.querySelectorAll('button')).find(b=>b.textContent.trim()===${JSON.stringify(text)}).click()`); await new Promise(r=>setTimeout(r,100)); };
-await click('Focus');
+for (const width of [1440, 1024, 768, 430, 390]) {
+ await send('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:false});
+ assert.equal(await run('document.documentElement.scrollWidth <= innerWidth'),true, `overflow at ${width}`);
+ await run(`document.querySelector('[data-tour="add-task"]').click()`);
+ await new Promise(r=>setTimeout(r,100));
+ assert.equal(await run('document.documentElement.scrollWidth <= innerWidth'),true, `form overflow at ${width}`);
+ assert.equal(await run('document.querySelector("input[type=datetime-local]") !== null'),true);
+ await click('Cancel');
+}
+await run("document.querySelector('[title=\"Focus on task\"]').click()"); await new Promise(r=>setTimeout(r,100));
 assert.equal(await run('document.querySelector("#focus-heading").textContent'),'Focus test task');
 assert.equal(await run('document.activeElement.id'),'focus-heading');
 assert.equal(await run('getComputedStyle(document.querySelector(".tasks-rail")).display'),'none');
 assert.equal(await run('getComputedStyle(document.querySelector(".notes-rail")).display'),'none');
-assert.equal(await run('document.querySelector(".focus-card .task-note-bullets").textContent'),'Only this note');
+assert.equal(await run('document.querySelector(".focus-card .task-note-bullets")'),null);
 assert.equal(await run('document.querySelector(".focus-clock").textContent'),'25:00');
 await click('Start'); await new Promise(r=>setTimeout(r,1200)); await click('Pause');
 const paused=await run('document.querySelector(".focus-clock").textContent');assert.notEqual(paused,'25:00');
@@ -42,7 +56,7 @@ assert.equal(await run('document.querySelector(".focus-completed").textContent')
 assert.equal(await run('document.querySelector(".focus-clock").textContent'),'15:00');
 assert.equal(await run('document.querySelectorAll("audio").length'),1);
 await click('Exit Focus Mode');assert.equal(await run('document.querySelector(".focus-card")'),null);
-await new Promise(r=>setTimeout(r,100));assert.equal(await run('document.activeElement.textContent'),'Focus');
+await new Promise(r=>setTimeout(r,100));assert.equal(await run('document.activeElement.getAttribute("title")'),'Focus on task');
 assert.equal(await run('document.querySelector(".task-heading input").checked'),true);
 console.log('PASS: enter, selected notes, start/pause/reset/duration, complete via API, exit and restored focus');ws.close();
 })().catch(e=>{console.error(e);process.exit(1)});

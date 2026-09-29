@@ -1,9 +1,14 @@
+import { browserSupabase } from "./supabase";
+import { sessionInitializer } from "./session";
+export const ensureSession = sessionInitializer(browserSupabase);
+
 export async function apiRequest<T>(url: string, options: RequestInit = {}): Promise<T> {
+  const session = await ensureSession();
   let response: Response;
   try {
     response = await fetch(url, {
       ...options,
-      headers: { ...(options.body ? { "Content-Type": "application/json" } : {}), ...options.headers },
+      headers: { ...(options.body ? { "Content-Type": "application/json" } : {}), ...options.headers, Authorization: `Bearer ${session.access_token}` },
       cache: "no-store",
     });
   } catch (error) {

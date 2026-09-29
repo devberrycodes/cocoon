@@ -1,6 +1,14 @@
 "use client";
 
-import { useId, useState, type ReactNode } from "react";
+import { useId, useState, useSyncExternalStore, type ReactNode } from "react";
+
+const subscribeMobile = (callback: () => void) => {
+  const media = window.matchMedia("(max-width: 800px)");
+  media.addEventListener("change", callback);
+  return () => media.removeEventListener("change", callback);
+};
+const mobileSnapshot = () => window.matchMedia("(max-width: 800px)").matches;
+const serverSnapshot = () => false;
 
 type PanelKind = "tasks" | "notes" | "music";
 
@@ -17,12 +25,16 @@ function PixelIcon({ kind }: { kind: PanelKind }) {
 export function CollapsiblePanel({ kind, label, children }: {
   kind: PanelKind; label: string; children: ReactNode;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [desktopCollapsed, setDesktopCollapsed] = useState(false);
+  const [mobileCollapsed, setMobileCollapsed] = useState(true);
+  const mobile = useSyncExternalStore(subscribeMobile, mobileSnapshot, serverSnapshot);
+  const floating = mobile && kind !== "tasks";
+  const collapsed = floating ? mobileCollapsed : desktopCollapsed;
   const id = useId();
   return <div className={`collapsible-panel ${kind}-rail${collapsed ? " is-collapsed" : ""}`}>
     <button type="button" className="panel-toggle" aria-expanded={!collapsed} aria-controls={id}
       aria-label={`${collapsed ? "Expand" : "Minimize"} ${label}`}
-      onClick={() => setCollapsed(value => !value)}>
+      onClick={() => floating ? setMobileCollapsed(value => !value) : setDesktopCollapsed(value => !value)}>
       <PixelIcon kind={kind} />
       {collapsed ? <span className="rail-label">{label}</span> : <span aria-hidden="true">−</span>}
     </button>

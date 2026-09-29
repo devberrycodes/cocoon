@@ -1,10 +1,11 @@
+import { authenticated } from "./helpers/auth.ts";
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, mock, test } from "node:test";
 import type { Task } from "../types/task.ts";
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://cocoon-test.supabase.co";
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
-const { GET, PATCH, DELETE } = await import("../app/api/tasks/[id]/route.ts");
+const { GET, PATCH, DELETE } = authenticated(await import("../app/api/tasks/[id]/route.ts"));
 const { supabase } = await import("../lib/supabase.ts");
 const task: Task = {
   id: "00000000-0000-4000-8000-000000000001", title: "Plan today", description: "Notes",

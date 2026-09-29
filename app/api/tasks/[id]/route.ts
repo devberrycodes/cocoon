@@ -1,3 +1,4 @@
+import { withAuth } from "../../../../lib/auth-server.ts";
 import { validId } from "../../../../lib/validation.ts";
 import { deleteTask, getTask, updateTask } from "../../../../lib/tasks.ts";
 import { validateTaskFields } from "../../../../lib/task-validation.ts";
@@ -9,7 +10,7 @@ function notFound() {
   return Response.json({ error: "Task not found." }, { status: 404 });
 }
 
-export async function GET(_request: Request, context: TaskContext) {
+async function handleGET(_request: Request, context: TaskContext) {
   try {
     const { id } = await context.params;
     if (!validId(id)) return Response.json({ error: "Invalid task ID." }, { status: 400 });
@@ -21,7 +22,7 @@ export async function GET(_request: Request, context: TaskContext) {
   }
 }
 
-export async function PATCH(request: Request, context: TaskContext) {
+async function handlePATCH(request: Request, context: TaskContext) {
   try {
     const { id } = await context.params;
     if (!validId(id)) return Response.json({ error: "Invalid task ID." }, { status: 400 });
@@ -41,7 +42,7 @@ export async function PATCH(request: Request, context: TaskContext) {
   }
 }
 
-export async function DELETE(_request: Request, context: TaskContext) {
+async function handleDELETE(_request: Request, context: TaskContext) {
   try {
     const { id } = await context.params;
     if (!validId(id)) return Response.json({ error: "Invalid task ID." }, { status: 400 });
@@ -51,3 +52,7 @@ export async function DELETE(_request: Request, context: TaskContext) {
     return Response.json({ error: "Unable to delete task." }, { status: 500 });
   }
 }
+
+export const GET = withAuth(handleGET);
+export const PATCH = withAuth(handlePATCH);
+export const DELETE = withAuth(handleDELETE);

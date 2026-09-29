@@ -1,3 +1,4 @@
+import { withAuth } from "../../../../lib/auth-server.ts";
 import { deleteNote, getNote, updateNote, saveNoteWithClipboard, NoteTaskNotFoundError } from "../../../../lib/notes.ts";
 import { getTask } from "../../../../lib/tasks.ts";
 import { validateNoteFields } from "../../../../lib/note-validation.ts";
@@ -7,7 +8,7 @@ type Context = { params: Promise<{ id: string }> };
 const notFound = () => Response.json({ error: "Note not found." }, { status: 404 });
 const invalidId = () => Response.json({ error: "Invalid note ID." }, { status: 400 });
 
-export async function GET(_request: Request, context: Context) {
+async function handleGET(_request: Request, context: Context) {
   try {
     const { id } = await context.params;
     if (!validId(id)) return invalidId();
@@ -19,7 +20,7 @@ export async function GET(_request: Request, context: Context) {
   }
 }
 
-export async function PATCH(request: Request, context: Context) {
+async function handlePATCH(request: Request, context: Context) {
   try {
     const { id } = await context.params;
     if (!validId(id)) return invalidId();
@@ -53,7 +54,7 @@ export async function PATCH(request: Request, context: Context) {
   }
 }
 
-export async function DELETE(_request: Request, context: Context) {
+async function handleDELETE(_request: Request, context: Context) {
   try {
     const { id } = await context.params;
     if (!validId(id)) return invalidId();
@@ -63,3 +64,7 @@ export async function DELETE(_request: Request, context: Context) {
     return Response.json({ error: "Unable to delete note." }, { status: 500 });
   }
 }
+
+export const GET = withAuth(handleGET);
+export const PATCH = withAuth(handlePATCH);
+export const DELETE = withAuth(handleDELETE);

@@ -1,3 +1,4 @@
+import { authenticated, TEST_USER } from "./helpers/auth.ts";
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, mock, test } from "node:test";
 import type { Task } from "../types/task.ts";
@@ -5,7 +6,7 @@ import type { Task } from "../types/task.ts";
 // Never load real credentials or contact a live database in endpoint tests.
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://cocoon-test.supabase.co";
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
-const { GET, POST } = await import("../app/api/tasks/route.ts");
+const { GET, POST } = authenticated(await import("../app/api/tasks/route.ts"));
 
 const task: Task = {
   id: "00000000-0000-4000-8000-000000000001",
@@ -68,7 +69,7 @@ function post(body: unknown) {
 test("GET returns tasks and requests newest-first ordering", async () => {
   const older = { ...task, id: "older", created_at: "2026-09-28T10:00:00.000Z" };
   databaseReply = () => Response.json([task, older]);
-  const response = await GET();
+  const response = await GET(new Request("http://localhost/api/tasks"));
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /application\/json/);
   assert.deepEqual(await response.json(), [task, older]);
@@ -80,7 +81,7 @@ test("GET returns tasks and requests newest-first ordering", async () => {
 });
 
 test("GET returns an empty array when no tasks exist", async () => {
-  const response = await GET();
+  const response = await GET(new Request("http://localhost/api/tasks"));
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), []);
 });
@@ -93,7 +94,7 @@ test("POST trims the title, applies defaults, and ignores protected fields", asy
   assert.equal(calls.length, 1);
   assert.equal(calls[0].method, "POST");
   assert.deepEqual(await calls[0].json(), {
-    title: task.title, description: null, completed: false, priority: "medium", due_date: null,
+    user_id: TEST_USER, title: task.title, description: null, completed: false, priority: "medium", due_date: null,
   });
   assert.match(calls[0].headers.get("prefer") ?? "", /return=representation/);
 });
@@ -102,11 +103,11 @@ for (const priority of ["low", "medium", "high"] as const) {
   test(`POST accepts ${priority} priority and optional fields`, async () => {
     const created = { ...task, priority, description: "Notes", due_date: "2096-02-29" };
     databaseReply = () => Response.json(created, { status: 201 });
-    const response = await post({ title: task.title, priority, description: " Notes ", due_date: "2096-02-29" });
+    const response = await post({ user_id: TEST_USER, title: task.title, priority, description: " Notes ", due_date: "2096-02-29" });
     assert.equal(response.status, 201);
     assert.deepEqual(await response.json(), created);
     assert.deepEqual(await calls[0].json(), {
-      title: task.title, priority, description: "Notes", due_date: "2096-02-29", completed: false,
+      user_id: TEST_USER, title: task.title, priority, description: "Notes", due_date: "2096-02-29", completed: false,
     });
   });
 }
@@ -153,7 +154,7 @@ for (const method of ["GET", "POST"] as const) {
         if (failure === "missing data") return Response.json(null);
         return Response.json({ message: "private SQL details", code: "42501" }, { status: 403 });
       };
-      const response = method === "GET" ? await GET() : await post({ title: "Task" });
+      const response = method === "GET" ? await GET(new Request("http://localhost/api/tasks")) : await post({ title: "Task" });
       assert.equal(response.status, 500);
       assert.deepEqual(await response.json(), {
         error: method === "GET" ? "Unable to fetch tasks." : "Unable to create task.",

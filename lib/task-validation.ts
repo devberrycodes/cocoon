@@ -1,4 +1,4 @@
-import { todayDate } from "./dates.ts";
+import { validDue } from "./dates.ts";
 import type { UpdateTaskInput } from "../types/task.ts";
 
 type ValidationResult = { data: UpdateTaskInput; error?: never } | { error: string; data?: never };
@@ -31,15 +31,9 @@ export function validateTaskFields(body: unknown, mode: "create" | "update"): Va
   }
   if ("due_date" in fields) {
     const value = fields.due_date;
-    if (value !== null) {
-      const date = typeof value === "string" ? new Date(value) : null;
-      if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
-        !date || !Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
-        return { error: "Due date must be a valid YYYY-MM-DD date or null." };
-      }
-    }
-    if (typeof value === "string" && value < todayDate()) {
-      return { error: "Due date cannot be in the past." };
+    if (value !== null && !validDue(value)) return { error: "Due date & time must be a valid ISO timestamp with timezone, or null." };
+    if (typeof value === "string" && Date.parse(value) < Math.floor(Date.now() / 60000) * 60000) {
+      return { error: "Due date & time cannot be in the past." };
     }
     input.due_date = value;
   }

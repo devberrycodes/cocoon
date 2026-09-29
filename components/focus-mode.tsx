@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useReducer, useRef } from "react";
+import { formatDue } from "@/lib/dates";
 import type { Task } from "@/types/task";
-import type { Note } from "@/types/note";
 import { useAction } from "@/lib/client/use-action";
 import { createTimer, focusTimer, FOCUS_DURATIONS } from "@/lib/focus-timer";
 
-export function FocusMode({ task, notes, notesLoading, notesError, onRetryNotes, onComplete, onExit }: {
-  task: Task; notes: Note[]; notesLoading: boolean; notesError: string | null;
-  onRetryNotes: () => void; onComplete: () => Promise<void>; onExit: () => void;
+export function FocusMode({ task, onComplete, onExit }: {
+  task: Task;
+  onComplete: () => Promise<void>; onExit: () => void;
 }) {
   const [timer, dispatch] = useReducer(focusTimer, undefined, () => createTimer());
   const heading = useRef<HTMLHeadingElement>(null);
@@ -29,10 +29,7 @@ export function FocusMode({ task, notes, notesLoading, notesError, onRetryNotes,
     <h2 ref={heading} tabIndex={-1} id="focus-heading">{task.title}</h2>
     {task.description && <p className="task-description">{task.description}</p>}
     <div className="task-meta"><span className={`priority-badge priority-${task.priority}`}>{task.priority === "high" && <span aria-hidden="true">⚑ </span>}{task.priority} priority</span>
-      {task.due_date && <span>Due <time dateTime={task.due_date}>{task.due_date.slice(0, 10)}</time></span>}</div>
-    {notesLoading && <p role="status">Loading task notes…</p>}
-    {notesError && <div role="alert" className="error">{notesError} <button className="button" onClick={onRetryNotes}>Retry task notes</button></div>}
-    {notes.length > 0 && <ul className="task-note-bullets">{notes.map(note => <li key={note.id}>{note.content}</li>)}</ul>}
+      {task.due_date && <span>Due <time dateTime={task.due_date}>{formatDue(task.due_date)}</time></span>}</div>
     <div className="focus-timer">
       <label htmlFor="focus-duration">Focus duration</label>
       <select id="focus-duration" value={timer.minutes} onChange={event => dispatch({ type: "duration", minutes: Number(event.target.value) })}>

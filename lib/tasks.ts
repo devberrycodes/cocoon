@@ -1,3 +1,4 @@
+import { authContext } from "./auth-server.ts";
 import type { InitialTaskNote } from "../types/note.ts";
 import { supabase } from "./supabase.ts";
 import type { CreateTaskInput, Task, UpdateTaskInput } from "../types/task.ts";
@@ -7,7 +8,7 @@ const taskColumns =
 
 export async function getTask(id: string): Promise<Task | null> {
   const { data, error } = await supabase.from("tasks")
-    .select(taskColumns).eq("id", id).maybeSingle<Task>();
+    .select(taskColumns).eq("user_id", authContext().userId).eq("id", id).maybeSingle<Task>();
   if (error) {
     console.error("Supabase task fetch error:", error);
     throw new Error("Unable to fetch task.");
@@ -18,7 +19,7 @@ export async function getTask(id: string): Promise<Task | null> {
 export async function updateTask(id: string, input: UpdateTaskInput): Promise<Task | null> {
   const { data, error } = await supabase.from("tasks")
     .update({ ...input, updated_at: new Date().toISOString() })
-    .eq("id", id).select(taskColumns).maybeSingle<Task>();
+    .eq("user_id", authContext().userId).eq("id", id).select(taskColumns).maybeSingle<Task>();
   if (error) {
     console.error("Supabase task update error:", error);
     throw new Error("Unable to update task.");
@@ -27,7 +28,7 @@ export async function updateTask(id: string, input: UpdateTaskInput): Promise<Ta
 }
 
 export async function deleteTask(id: string): Promise<boolean> {
-  const { data, error } = await supabase.from("tasks").delete().eq("id", id).select("id").maybeSingle<Pick<Task, "id">>();
+  const { data, error } = await supabase.from("tasks").delete().eq("user_id", authContext().userId).eq("id", id).select("id").maybeSingle<Pick<Task, "id">>();
   if (error) {
     console.error("Supabase task delete error:", { code: error.code });
     throw new Error("Unable to delete task.");
@@ -39,7 +40,7 @@ export async function listTasks(): Promise<Task[]> {
   const { data, error } = await supabase
     .from("tasks")
     .select(taskColumns)
-    .order("created_at", { ascending: false })
+    .eq("user_id", authContext().userId).order("created_at", { ascending: false })
     .returns<Task[]>();
 
   if (error || !data) throw new Error("Unable to fetch tasks.");
@@ -58,7 +59,7 @@ export async function createTask(input: CreateTaskInput, notes: InitialTaskNote[
   }
   const { data, error } = await supabase
     .from("tasks")
-    .insert(input)
+    .insert({ ...input, user_id: authContext().userId })
     .select(taskColumns)
     .single<Task>();
 

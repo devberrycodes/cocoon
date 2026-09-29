@@ -1,15 +1,16 @@
+import { authenticated } from "./helpers/auth.ts";
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, mock, test } from "node:test";
 import type { Note } from "../types/note.ts";
 import type { Task } from "../types/task.ts";
-import { todayDate } from "../lib/dates.ts";
+const todayDate = (date = new Date("2099-09-29T18:00:00.000Z")) => date.toISOString();
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://cocoon-test.supabase.co";
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
-const tasks = await import("../app/api/tasks/route.ts");
-const detail = await import("../app/api/tasks/[id]/route.ts");
-const noteDetail = await import("../app/api/notes/[id]/route.ts");
-const notesApi = await import("../app/api/notes/route.ts");
+const tasks = authenticated(await import("../app/api/tasks/route.ts"));
+const detail = authenticated(await import("../app/api/tasks/[id]/route.ts"));
+const noteDetail = authenticated(await import("../app/api/notes/[id]/route.ts"));
+const notesApi = authenticated(await import("../app/api/notes/route.ts"));
 const task: Task = {
   id: "00000000-0000-4000-8000-000000000001", title: "Finish Cocoon API", description: "Description is not a note",
   completed: false, priority: "medium", due_date: null, created_at: "2026-09-29T12:00:00Z", updated_at: "2026-09-29T12:00:00Z",
@@ -123,7 +124,7 @@ for (const body of [
   });
 }
 for (const method of ["POST", "PATCH"] as const) {
-  test(`${method} rejects past due dates and accepts today`, async () => {
+  test(`${method} rejects past due dates and accepts future timestamps`, async () => {
     const yesterday = todayDate(new Date(Date.now() - 86400000));
     const invoke = (date: string) => method === "POST" ? tasks.POST(request("POST", { title: "Task", due_date: date })) : detail.PATCH(request("PATCH", { due_date: date }), context());
     assert.equal((await invoke(yesterday)).status, 400); assert.equal(calls.length, 0);

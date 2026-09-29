@@ -1,5 +1,5 @@
 import { AmbientBackground } from "@/components/ambient-background";
-import { TaskWorkspace } from "@/components/task-workspace";
+import { AuthWorkspace } from "@/components/auth-workspace";
 
 export default function Home() {
   return (
@@ -9,7 +9,7 @@ export default function Home() {
       <div className="startup-screen" aria-hidden="true">
         <span className="startup-word">{Array.from("cocoon").map((letter, index) => <span key={index} style={{ animationDelay: `${index * 110}ms` }}>{letter}</span>)}</span>
       </div>
-      <TaskWorkspace />
+      <AuthWorkspace />
     </>
   );
 }

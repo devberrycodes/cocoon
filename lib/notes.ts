@@ -1,3 +1,4 @@
+import { authContext } from "./auth-server.ts";
 import { supabase } from "./supabase.ts";
 import type { Note, UpdateNoteInput } from "../types/note.ts";
 
@@ -12,7 +13,7 @@ function databaseError(operation: string, error: { code: string; message: string
 }
 
 export async function listNotes(taskId?: string | null): Promise<Note[]> {
-  let query = supabase.from("notes").select(columns).order("created_at", { ascending: false });
+  let query = supabase.from("notes").select(columns).eq("user_id", authContext().userId).order("created_at", { ascending: false });
   if (taskId === null) query = query.is("task_id", null);
   else if (taskId !== undefined) query = query.eq("task_id", taskId);
   const { data, error } = await query.returns<Note[]>();
@@ -22,13 +23,13 @@ export async function listNotes(taskId?: string | null): Promise<Note[]> {
 }
 
 export async function getNote(id: string): Promise<Note | null> {
-  const { data, error } = await supabase.from("notes").select(columns).eq("id", id).maybeSingle<Note>();
+  const { data, error } = await supabase.from("notes").select(columns).eq("user_id", authContext().userId).eq("id", id).maybeSingle<Note>();
   if (error) databaseError("fetch", error);
   return data ? withDefaultColor(data) : null;
 }
 
 export async function createNote(input: Pick<Note, "content" | "task_id"> & Partial<Pick<Note, "source_task_title" | "color">>): Promise<Note> {
-  const { data, error } = await supabase.from("notes").insert(input).select(columns).single<Note>();
+  const { data, error } = await supabase.from("notes").insert({ ...input, user_id: authContext().userId }).select(columns).single<Note>();
   if (error) databaseError("create", error);
   if (!data) throw new Error("Unable to create note.");
   return withDefaultColor(data);
@@ -36,13 +37,13 @@ export async function createNote(input: Pick<Note, "content" | "task_id"> & Part
 
 export async function updateNote(id: string, input: UpdateNoteInput): Promise<Note | null> {
   const { data, error } = await supabase.from("notes")
-    .update({ ...input, updated_at: new Date().toISOString() }).eq("id", id).select(columns).maybeSingle<Note>();
+    .update({ ...input, updated_at: new Date().toISOString() }).eq("user_id", authContext().userId).eq("id", id).select(columns).maybeSingle<Note>();
   if (error) databaseError("update", error);
   return data ? withDefaultColor(data) : null;
 }
 
 export async function deleteNote(id: string): Promise<boolean> {
-  const { data, error } = await supabase.from("notes").delete().eq("id", id).select("id").maybeSingle<Pick<Note, "id">>();
+  const { data, error } = await supabase.from("notes").delete().eq("user_id", authContext().userId).eq("id", id).select("id").maybeSingle<Pick<Note, "id">>();
   if (error) databaseError("delete", error);
   return data !== null;
 }

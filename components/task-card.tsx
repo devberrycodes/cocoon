@@ -1,24 +1,19 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { formatDue } from "@/lib/dates";
 import type { Task, UpdateTaskInput } from "@/types/task";
-import type { Note } from "@/types/note";
+import { Pencil, Trash2 } from "lucide-react";
 import { TaskForm } from "./task-form";
-import { TaskNotes } from "./task-notes";
 import { useAction } from "@/lib/client/use-action";
 
-export function TaskCard({ task, notes, notesLoading, notesError, onRetryNotes, onUpdate, onDelete, onAddNote, onSaveNote, onDeleteNote, onFocus }: {
-  onFocus: (task: Task, trigger: HTMLButtonElement) => void;
-  task: Task; notes: Note[]; notesLoading: boolean; notesError: string | null; onRetryNotes: () => void;
-  onUpdate: (id: string, input: UpdateTaskInput) => Promise<void>;
+export function TaskCard({ task, onUpdate, onDelete, onFocus }: {
+  task: Task; onUpdate: (id: string, input: UpdateTaskInput) => Promise<void>;
   onDelete: (task: Task) => Promise<void>;
-  onAddNote: (content: string, clipboard: boolean) => Promise<void>;
-  onSaveNote: (id: string, content: string, clipboard?: boolean) => Promise<void>; onDeleteNote: (id: string) => Promise<void>;
+  onFocus: (task: Task, trigger: HTMLButtonElement) => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [editingNotes, setEditingNotes] = useState(false);
   const editButton = useRef<HTMLButtonElement>(null);
-  const notesButton = useRef<HTMLButtonElement>(null);
   const { run, pending, error } = useAction();
   const closeEditor = () => {
     setEditing(false);
@@ -37,26 +32,20 @@ export function TaskCard({ task, notes, notesLoading, notesError, onRetryNotes, 
       </div>
       {task.description && <p className="task-description">{task.description}</p>}
       <div className="task-meta">
-        <span>{task.completed ? "Completed" : "Open"}</span>
+        {task.completed && <span>Completed</span>}
         <span className={`priority-badge priority-${task.priority}`}>{task.priority === "high" && <span aria-hidden="true">⚑ </span>}{task.priority} priority</span>
-        {task.due_date && <span>Due <time dateTime={task.due_date}>{task.due_date.slice(0, 10)}</time></span>}
+        {task.due_date && <span>Due <time dateTime={task.due_date}>{formatDue(task.due_date)}</time></span>}
       </div>
-      <div className="actions">
-        <button className="button primary" disabled={pending} onClick={event => onFocus(task, event.currentTarget)}>Focus</button>
-        <button className="button" disabled={pending} ref={editButton} onClick={() => { setEditingNotes(false); setEditing(true); }}>Edit task</button>
-        <button className="button" disabled={pending} ref={notesButton} aria-expanded={editingNotes}
-          onClick={() => setEditingNotes(value => !value)}>Edit notes</button>
-        <button className="button danger" disabled={pending} onClick={() => {
+      <div className="actions task-card-actions">
+        <button className="button primary" aria-label={`Edit ${task.title}`} title="Edit task" disabled={pending} ref={editButton} onClick={() => setEditing(true)}><Pencil size={16} aria-hidden="true" /></button>
+        <button className="button danger" aria-label={`Delete ${task.title}`} title="Delete task" disabled={pending} onClick={() => {
           if (window.confirm(`Delete “${task.title}” and its task notes? Clipboard notes will remain. This cannot be undone.`)) {
             void run(() => onDelete(task));
           }
-        }}>Delete</button>
+        }}><Trash2 size={18} aria-hidden="true" /></button>
+        <button className="button task-focus-action" aria-label={`Focus on ${task.title}`} title="Focus on task" disabled={pending} onClick={event => onFocus(task, event.currentTarget)}><span aria-hidden="true">✦</span></button>
       </div>
     </>}
-    <TaskNotes notes={notes} editing={editingNotes && !editing} loading={notesLoading} error={notesError} onRetry={onRetryNotes}
-      onAdd={onAddNote} onSave={onSaveNote} onDelete={onDeleteNote} onDone={() => {
-        setEditingNotes(false); requestAnimationFrame(() => notesButton.current?.focus());
-      }} />
     {pending && <p role="status" className="muted">Working…</p>}
     {error && <p role="alert" className="error">{error}</p>}
 

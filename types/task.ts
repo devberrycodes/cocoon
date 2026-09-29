@@ -8,7 +8,7 @@ export interface Task {
   description: string | null;
   completed: boolean;
   priority: TaskPriority;
-  /** ISO date string, or null when no due date is set. */
+  /** ISO timestamp with timezone, or null when no due date is set. */
   due_date: string | null;
   /** ISO timestamp strings returned by the database. */
   created_at: string;

@@ -1,9 +1,10 @@
+import { withAuth } from "../../../lib/auth-server.ts";
 import { validateInitialNotes } from "../../../lib/initial-notes-validation.ts";
 import { createTask, listTasks } from "../../../lib/tasks.ts";
 import { validateTaskFields } from "../../../lib/task-validation.ts";
 import type { CreateTaskInput } from "../../../types/task.ts";
 
-export async function GET() {
+async function handleGET() {
   try {
     return Response.json(await listTasks(), { status: 200 });
   } catch {
@@ -11,7 +12,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   let body: unknown;
   try {
     body = await request.json();
@@ -40,3 +41,6 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unable to create task." }, { status: 500 });
   }
 }
+
+export const GET = withAuth(handleGET);
+export const POST = withAuth(handlePOST);

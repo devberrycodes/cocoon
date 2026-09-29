@@ -1,11 +1,12 @@
+import { authenticated, TEST_USER } from "./helpers/auth.ts";
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, mock, test } from "node:test";
 import type { Note } from "../types/note.ts";
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://cocoon-test.supabase.co";
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
-const collection = await import("../app/api/notes/route.ts");
-const detail = await import("../app/api/notes/[id]/route.ts");
+const collection = authenticated(await import("../app/api/notes/route.ts"));
+const detail = authenticated(await import("../app/api/notes/[id]/route.ts"));
 const { supabase } = await import("../lib/supabase.ts");
 const taskId = "00000000-0000-4000-8000-000000000001";
 const note: Note = {
@@ -67,7 +68,7 @@ test("POST creates a standalone note, trims content, and ignores protected field
   const response = await collection.POST(request("POST", { content: "  New note  ", id: "injected", created_at: "injected" }));
   assert.equal(response.status, 201);
   assert.equal((await response.json()).content, "New note");
-  assert.deepEqual(await calls[0].json(), { content: "New note", task_id: null });
+  assert.deepEqual(await calls[0].json(), { content: "New note", task_id: null, user_id: TEST_USER });
 });
 
 test("POST creates a note belonging to an existing task", async () => {

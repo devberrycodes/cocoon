@@ -1,9 +1,10 @@
+import { withAuth } from "../../../lib/auth-server.ts";
 import { createNote, saveNoteWithClipboard, listNotes, NoteTaskNotFoundError } from "../../../lib/notes.ts";
 import { getTask } from "../../../lib/tasks.ts";
 import { validateNoteFields } from "../../../lib/note-validation.ts";
 import { validId } from "../../../lib/validation.ts";
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   const filter = new URL(request.url).searchParams.get("task_id");
   if (filter !== null && filter !== "null" && !validId(filter)) {
     return Response.json({ error: "Invalid task ID." }, { status: 400 });
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   let body: unknown;
   try { body = await request.json(); }
   catch { return Response.json({ error: "Invalid JSON body." }, { status: 400 }); }
@@ -47,3 +48,6 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unable to create note." }, { status: 500 });
   }
 }
+
+export const GET = withAuth(handleGET);
+export const POST = withAuth(handlePOST);
