@@ -22,6 +22,7 @@ let databaseReply: () => Response | Promise<Response>;
 
 beforeEach(() => {
   calls = [];
+  mock.method(console, "error", () => {});
   databaseReply = () => Response.json([]);
   mock.method(globalThis, "fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
     calls.push(new Request(input, init));
@@ -29,6 +30,32 @@ beforeEach(() => {
   });
 });
 afterEach(() => mock.restoreAll());
+
+test("POST logs the complete Supabase error without exposing it in the response", async () => {
+  const log = mock.method(console, "error", () => {});
+  const error = {
+    code: "42501",
+    message: 'new row violates row-level security policy for table "tasks"',
+    details: "Database diagnostic details",
+    hint: "Database diagnostic hint",
+  };
+  databaseReply = () => Response.json(error, { status: 403 });
+  const response = await post({ title: "Task" });
+  assert.equal(response.status, 500);
+  assert.deepEqual(await response.json(), { error: "Unable to create task." });
+  assert.deepEqual(log.mock.calls[0].arguments, ["Supabase task insert error:", error]);
+});
+
+test("POST logs unexpected thrown errors without exposing them in the response", async () => {
+  const { supabase } = await import("../lib/supabase.ts");
+  const error = new Error("Unexpected internal failure");
+  mock.method(supabase, "from", () => { throw error; });
+  const log = mock.method(console, "error", () => {});
+  const response = await post({ title: "Task" });
+  assert.equal(response.status, 500);
+  assert.deepEqual(await response.json(), { error: "Unable to create task." });
+  assert.deepEqual(log.mock.calls[0].arguments, ["Unexpected task creation error:", error]);
+});
 
 function post(body: unknown) {
   return POST(new Request("http://localhost/api/tasks", {
