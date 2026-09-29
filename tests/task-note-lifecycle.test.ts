@@ -8,6 +8,7 @@ process.env.NEXT_PUBLIC_SUPABASE_URL = "https://cocoon-test.supabase.co";
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
 const tasks = await import("../app/api/tasks/route.ts");
 const detail = await import("../app/api/tasks/[id]/route.ts");
+const noteDetail = await import("../app/api/notes/[id]/route.ts");
 const notesApi = await import("../app/api/notes/route.ts");
 const task: Task = {
   id: "00000000-0000-4000-8000-000000000001", title: "Finish Cocoon API", description: "Description is not a note",
@@ -27,27 +28,33 @@ beforeEach(() => {
   mock.method(globalThis, "fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
     const req = new Request(input, init); calls.push(req);
     const url = new URL(req.url);
-    if (url.pathname.endsWith("/rpc/delete_task_with_notes")) {
+    if (url.pathname.endsWith("/rpc/save_note_with_clipboard")) {
       if (failRpc) return Response.json({ code: "42501", message: "private permission details" }, { status: 403 });
       const payload = await req.clone().json();
-      if (!currentTask) return Response.json({ status: "not_found" });
-      const attached = notes.filter(n => n.task_id === payload.p_task_id);
-      if (attached.length && payload.p_note_action === null) return Response.json({ status: "notes_choice_required" });
-      notes = payload.p_note_action === "keep" ? notes.map(n => n.task_id === task.id ? { ...n, task_id: null, source_task_title: task.title } : n) : notes.filter(n => n.task_id !== task.id);
-      currentTask = null;
-      return Response.json({ status: "deleted", note_count: attached.length });
+      const existing = payload.p_note_id ? notes.find(n => n.id === payload.p_note_id) : note;
+      if (!existing) return Response.json(null);
+      const saved = { ...existing, ...payload.p_fields };
+      notes = notes.filter(n => n.id !== saved.id);
+      notes.push(saved, { ...saved, id: "copy", task_id: null, source_task_title: currentTask?.title });
+      return Response.json(saved);
     }
     if (url.pathname.endsWith("/rpc/create_task_with_notes")) {
       if (failRpc) return Response.json({ code: "23514", message: "private note constraint" }, { status: 400 });
       const payload = await req.clone().json();
       currentTask = { ...task, ...payload.p_task };
-      notes = payload.p_notes.map((n: { content: string; add_to_clipboard: boolean }, i: number) => ({
-        ...note, id: String(i), content: n.content,
-        task_id: n.add_to_clipboard ? null : task.id, source_task_title: n.add_to_clipboard ? currentTask?.title : null,
-      }));
+      notes = payload.p_notes.flatMap((n: { content: string; add_to_clipboard: boolean }, i: number) => {
+        const attached = { ...note, id: String(i), content: n.content, task_id: task.id };
+        return n.add_to_clipboard ? [attached, { ...attached, id: `copy-${i}`, task_id: null, source_task_title: currentTask?.title }] : [attached];
+      });
       return Response.json(currentTask);
     }
     if (url.pathname.endsWith("/tasks")) {
+      if (req.method === "DELETE") {
+        if (failRpc) return Response.json({ code: "42501", message: "private permission details" }, { status: 403 });
+        const deleted = currentTask;
+        currentTask = null; notes = notes.filter(n => n.task_id !== task.id);
+        return Response.json(deleted ? [{ id: deleted.id }] : []);
+      }
       if (req.method === "GET") return Response.json(currentTask ? [currentTask] : []);
       const payload = await req.clone().json();
       currentTask = { ...task, ...payload };
@@ -55,7 +62,7 @@ beforeEach(() => {
     }
     if (url.pathname.endsWith("/notes")) {
       if (req.method === "GET") {
-        return Response.json(notes.filter(n => url.searchParams.get("task_id") === "is.null" ? n.task_id === null : true));
+        return Response.json(notes.filter(n => url.searchParams.has("id") ? `eq.${n.id}` === url.searchParams.get("id") : url.searchParams.get("task_id") === "is.null" ? n.task_id === null : true));
       }
       const payload = await req.clone().json();
       const saved = { ...note, ...payload }; notes.push(saved);
@@ -70,46 +77,35 @@ const request = (method: string, body?: unknown, query = "") => new Request(`htt
   method, ...(body === undefined ? {} : { body: JSON.stringify(body), headers: { "Content-Type": "application/json" } }),
 });
 
-test("deleting with notes requires an explicit choice and changes nothing", async () => {
-  const response = await detail.DELETE(request("DELETE"), context());
-  assert.equal(response.status, 409); assert.ok(currentTask); assert.equal(notes[0].task_id, task.id);
+test("deleting a task cascades task notes but keeps independent clipboard notes", async () => {
+  const general = { ...note, id: "general", task_id: null };
+  const copy = { ...note, id: "copy", task_id: null, source_task_title: task.title };
+  notes.push(general, copy);
+  assert.equal((await detail.DELETE(request("DELETE"), context())).status, 204);
+  assert.equal(currentTask, null); assert.deepEqual(notes, [general, copy]);
 });
-test("delete without notes succeeds and never converts the description into a note", async () => {
+test("delete without notes never converts the description into a note", async () => {
   notes = [];
   assert.equal((await detail.DELETE(request("DELETE"), context())).status, 204);
   assert.equal(currentTask, null); assert.deepEqual(notes, []);
 });
-test("keep notes detaches them and preserves the source title on the clipboard", async () => {
-  const response = await detail.DELETE(request("DELETE", undefined, "?notes=keep"), context());
-  assert.equal(response.status, 204); assert.equal(currentTask, null);
-  const clipboard = await notesApi.GET(new Request("http://localhost/api/notes?task_id=null"));
-  assert.deepEqual(await clipboard.json(), [{ ...note, task_id: null, source_task_title: task.title }]);
-  const payload = await calls[0].json();
-  assert.deepEqual(payload, { p_task_id: task.id, p_note_action: "keep" });
-});
-test("delete task and notes removes only that task's notes", async () => {
-  const general = { ...note, id: "general", task_id: null }; notes.push(general);
-  assert.equal((await detail.DELETE(request("DELETE", undefined, "?notes=delete"), context())).status, 204);
-  assert.deepEqual(notes, [general]);
-});
-test("failed atomic deletion leaves the task and notes in place and returns a safe error", async () => {
+test("failed deletion leaves task and notes in place and returns safe error", async () => {
   failRpc = true;
-  const response = await detail.DELETE(request("DELETE", undefined, "?notes=keep"), context());
+  const response = await detail.DELETE(request("DELETE"), context());
   assert.equal(response.status, 500); assert.deepEqual(await response.json(), { error: "Unable to delete task." });
   assert.ok(currentTask); assert.deepEqual(notes, [note]);
 });
-test("invalid deletion choice is rejected before database access", async () => {
-  assert.equal((await detail.DELETE(request("DELETE", undefined, "?notes=unknown"), context())).status, 400);
-  assert.equal(calls.length, 0);
-});
 test("initial notes use one atomic request and honor each clipboard option", async () => {
-  const response = await tasks.POST(request("POST", { title: "New task", priority: "high", due_date: todayDate(), notes: [
+  const response = await tasks.POST(request("POST", { title: "New task", description: "Plan the release", priority: "high", due_date: todayDate(), notes: [
     { content: "  Attached  " }, { content: "General reminder", add_to_clipboard: true },
   ] }));
   assert.equal(response.status, 201); assert.equal(calls.length, 1);
   assert.equal(new URL(calls[0].url).pathname, "/rest/v1/rpc/create_task_with_notes");
   assert.equal(notes[0].task_id, task.id); assert.equal(notes[0].content, "Attached");
-  assert.equal(notes[1].task_id, null); assert.equal(notes[1].source_task_title, "New task");
+  assert.equal(notes[1].task_id, task.id); assert.equal(notes[2].task_id, null);
+  assert.equal(notes[2].source_task_title, "New task"); assert.equal(notes.length, 3);
+  assert.equal(currentTask?.description, "Plan the release");
+  assert.equal(currentTask?.priority, "high"); assert.equal(currentTask?.due_date, todayDate());
 });
 test("failed initial-note transaction does not create a task", async () => {
   currentTask = null; notes = []; failRpc = true;
@@ -133,14 +129,39 @@ for (const method of ["POST", "PATCH"] as const) {
     assert.equal((await invoke(todayDate())).status, method === "POST" ? 201 : 200);
   });
 }
-test("Add to clipboard creates one general note with server-derived task title", async () => {
+test("Also add to clipboard keeps the task note and creates an independent copy", async () => {
   notes = [];
   const response = await notesApi.POST(request("POST", { content: "Remember this", task_id: task.id, add_to_clipboard: true, source_task_title: "untrusted" }));
   assert.equal(response.status, 201);
   const created = await response.json();
-  assert.equal(created.task_id, null); assert.equal(created.source_task_title, task.title); assert.equal(notes.length, 1);
+  assert.equal(created.task_id, task.id); assert.equal(notes.length, 2);
+  assert.equal(notes[1].task_id, null); assert.equal(notes[1].source_task_title, task.title);
+  assert.equal((await detail.DELETE(request("DELETE"), context())).status, 204);
+  assert.equal(notes.length, 1); assert.equal(notes[0].content, "Remember this");
 });
 test("Add to clipboard rejects a non-boolean toggle", async () => {
   assert.equal((await notesApi.POST(request("POST", { content: "Note", task_id: task.id, add_to_clipboard: "yes" }))).status, 400);
   assert.equal(calls.length, 0);
+});
+
+test("editing a task note can also add an independent clipboard copy", async () => {
+  const response = await noteDetail.PATCH(request("PATCH", { content: "Updated", add_to_clipboard: true }), { params: Promise.resolve({ id: note.id }) });
+  assert.equal(response.status, 200); assert.equal((await response.json()).task_id, task.id);
+  assert.equal(notes.length, 2); assert.equal(notes[0].content, "Updated");
+  assert.equal(notes[1].content, "Updated"); assert.equal(notes[1].task_id, null);
+});
+test("failed clipboard copy does not update the task note", async () => {
+  failRpc = true;
+  const response = await noteDetail.PATCH(request("PATCH", { content: "Updated", add_to_clipboard: true }), { params: Promise.resolve({ id: note.id }) });
+  assert.equal(response.status, 500); assert.deepEqual(notes, [note]);
+  assert.deepEqual(await response.json(), { error: "Unable to update note." });
+});
+test("general notes cannot be copied with task-only clipboard option", async () => {
+  notes = [{ ...note, task_id: null }];
+  const response = await noteDetail.PATCH(request("PATCH", { content: "Updated", add_to_clipboard: true }), { params: Promise.resolve({ id: note.id }) });
+  assert.equal(response.status, 400);
+});
+test("PATCH rejects non-boolean clipboard option", async () => {
+  const response = await noteDetail.PATCH(request("PATCH", { content: "Updated", add_to_clipboard: "yes" }), { params: Promise.resolve({ id: note.id }) });
+  assert.equal(response.status, 400); assert.equal(calls.length, 0);
 });

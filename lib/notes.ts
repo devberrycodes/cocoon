@@ -46,3 +46,25 @@ export async function deleteNote(id: string): Promise<boolean> {
   if (error) databaseError("delete", error);
   return data !== null;
 }
+
+// The task note and independent clipboard copy must succeed or fail together.
+export async function saveNoteWithClipboard(input: UpdateNoteInput, id: string | null = null): Promise<Note | null> {
+  const { data: result, error } = await supabase.rpc("save_note_with_clipboard", {
+    p_note_id: id, p_fields: input,
+  });
+  if (error) databaseError("save", error);
+  const data: unknown = result;
+  if (data === null) return null;
+  if (!isNote(data)) throw new Error("Unable to save note.");
+  return data;
+}
+
+function isNote(value: unknown): value is Note {
+  if (!value || typeof value !== "object") return false;
+  return "id" in value && typeof value.id === "string" &&
+    "content" in value && typeof value.content === "string" &&
+    "task_id" in value && (value.task_id === null || typeof value.task_id === "string") &&
+    "source_task_title" in value && (value.source_task_title === null || typeof value.source_task_title === "string") &&
+    "created_at" in value && typeof value.created_at === "string" &&
+    "updated_at" in value && typeof value.updated_at === "string";
+}

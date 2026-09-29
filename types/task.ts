@@ -22,4 +22,3 @@ export type CreateTaskInput = Pick<Task, "title"> &
 export type UpdateTaskInput = Partial<CreateTaskInput>;
 
 export type CreateTaskRequest = CreateTaskInput & { notes?: InitialTaskNote[] };
-export type TaskNoteAction = "keep" | "delete";

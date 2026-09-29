@@ -1,4 +1,4 @@
-import { createNote, listNotes, NoteTaskNotFoundError } from "../../../lib/notes.ts";
+import { createNote, saveNoteWithClipboard, listNotes, NoteTaskNotFoundError } from "../../../lib/notes.ts";
 import { getTask } from "../../../lib/tasks.ts";
 import { validateNoteFields } from "../../../lib/note-validation.ts";
 import { validId } from "../../../lib/validation.ts";
@@ -35,11 +35,12 @@ export async function POST(request: Request) {
     if (taskId && !task) {
       return Response.json({ error: "Linked task not found." }, { status: 404 });
     }
-    return Response.json(await createNote({
-      content: result.data.content ?? "",
-      task_id: fields.add_to_clipboard === true ? null : taskId,
-      ...(fields.add_to_clipboard === true ? { source_task_title: task?.title ?? null } : {}),
-    }), { status: 201 });
+    const input = { content: result.data.content ?? "", task_id: taskId };
+    const note = fields.add_to_clipboard === true
+      ? await saveNoteWithClipboard(input)
+      : await createNote(input);
+    if (!note) throw new Error("Unable to create note.");
+    return Response.json(note, { status: 201 });
   } catch (error) {
     if (error instanceof NoteTaskNotFoundError) return Response.json({ error: "Linked task not found." }, { status: 404 });
     console.error("Note creation failed:", error);

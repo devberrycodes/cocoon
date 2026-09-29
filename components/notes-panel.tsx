@@ -13,7 +13,7 @@ export function NotesPanel({ notes, loading, error, onRetry, onAdd, onSave, onDe
     <div className="clipboard-clip" aria-hidden="true" />
     <h2 id="notes-heading" tabIndex={-1}>General Notes</h2>
     <p className="muted clipboard-intro">Your clipboard for ideas, reminders, and notes you want to keep.</p>
-    <NoteForm disabled={loading || Boolean(error)} onSave={onAdd} />
+    <NoteForm inline disabled={loading || Boolean(error)} onSave={onAdd} />
     {loading && <p role="status" className="muted">Loading clipboard…</p>}
     {error && <div role="alert" className="error"><p>{error}</p><button className="button" disabled={loading} onClick={onRetry}>Retry loading notes</button></div>}
     {!loading && !error && notes.length === 0 && <p className="empty">Your clipboard is empty. Add your first note above.</p>}

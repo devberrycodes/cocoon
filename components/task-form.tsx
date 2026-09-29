@@ -48,9 +48,8 @@ export function TaskForm({ task, onSave, onCancel, disabled = false }: {
         </div>
         <div className="field">
           <label htmlFor={`${id}-description`}>Description</label>
-          <textarea id={`${id}-description`} value={description} onChange={e => setDescription(e.target.value)} maxLength={10000} rows={2} />
+          <textarea id={`${id}-description`} value={description} onChange={e => setDescription(e.target.value)} maxLength={10000} rows={task ? 2 : 1} />
         </div>
-        {!task && <p className="muted">Descriptions belong to the task. Add separate notes below if you may want to keep them on the clipboard.</p>}
         {!task && <fieldset className="initial-notes">
           <legend>Notes <span className="muted">(optional)</span></legend>
           {notes.map((note, index) => <div className="initial-note" key={note.draftId}>
@@ -58,7 +57,7 @@ export function TaskForm({ task, onSave, onCancel, disabled = false }: {
             <textarea id={`${id}-note-${index}`} rows={2} required maxLength={10000} value={note.content}
               onChange={event => setNotes(current => current.map((item, i) => i === index ? { ...item, content: event.target.value } : item))} />
             <label className="checkbox-label"><input type="checkbox" checked={note.add_to_clipboard}
-              onChange={event => setNotes(current => current.map((item, i) => i === index ? { ...item, add_to_clipboard: event.target.checked } : item))} />Add to clipboard</label>
+              onChange={event => setNotes(current => current.map((item, i) => i === index ? { ...item, add_to_clipboard: event.target.checked } : item))} />Also add to clipboard</label>
             <button className="button" type="button" onClick={() => setNotes(current => current.filter((_, i) => i !== index))}>Remove note {index + 1}</button>
           </div>)}
           <button className="button" type="button" disabled={notes.length >= 50} onClick={() => setNotes(current => [...current, { draftId: crypto.randomUUID(), content: "", add_to_clipboard: false }])}>Add a note</button>

@@ -3,6 +3,7 @@ import { TaskWorkspace } from "@/components/task-workspace";
 export default function Home() {
   return (
     <>
+      <div className="background-layer" aria-hidden="true" />
       <a className="skip-link" href="#main">Skip to content</a>
       <header className="site-header">
         <div className="page-width">

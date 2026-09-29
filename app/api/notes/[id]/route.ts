@@ -1,4 +1,4 @@
-import { deleteNote, getNote, updateNote, NoteTaskNotFoundError } from "../../../../lib/notes.ts";
+import { deleteNote, getNote, updateNote, saveNoteWithClipboard, NoteTaskNotFoundError } from "../../../../lib/notes.ts";
 import { getTask } from "../../../../lib/tasks.ts";
 import { validateNoteFields } from "../../../../lib/note-validation.ts";
 import { validId } from "../../../../lib/validation.ts";
@@ -31,7 +31,20 @@ export async function PATCH(request: Request, context: Context) {
     if (result.data.task_id && !await getTask(result.data.task_id)) {
       return Response.json({ error: "Linked task not found." }, { status: 404 });
     }
-    const note = await updateNote(id, result.data);
+    const fields = body as Record<string, unknown>;
+    if (fields.add_to_clipboard !== undefined && typeof fields.add_to_clipboard !== "boolean") {
+      return Response.json({ error: "Add to clipboard must be a boolean." }, { status: 400 });
+    }
+    if (fields.add_to_clipboard === true) {
+      const existing = await getNote(id);
+      if (!existing) return notFound();
+      if (!(result.data.task_id === undefined ? existing.task_id : result.data.task_id)) {
+        return Response.json({ error: "A task is required for the clipboard reference." }, { status: 400 });
+      }
+    }
+    const note = fields.add_to_clipboard === true
+      ? await saveNoteWithClipboard(result.data, id)
+      : await updateNote(id, result.data);
     return note ? Response.json(note) : notFound();
   } catch (error) {
     if (error instanceof NoteTaskNotFoundError) return Response.json({ error: "Linked task not found." }, { status: 404 });

@@ -26,14 +26,6 @@ beforeEach(() => {
     const request = new Request(input, init);
     calls.push(request);
     const url = new URL(request.url);
-    if (url.pathname.endsWith("/rpc/delete_task_with_notes")) {
-      const payload = await request.clone().json();
-      assert.equal(payload.p_task_id, task.id);
-      if (failure) return Response.json({ code: "42501", message: "private SQL details" }, { status: 403 });
-      const result = { status: stored ? "deleted" : "not_found" };
-      stored = null;
-      return Response.json(result);
-    }
     assert.equal(url.searchParams.get("id"), `eq.${task.id}`);
     if (failure) return Response.json({ code: "42501", message: "private SQL details" }, { status: 403 });
     if (request.method === "GET") return Response.json(stored ? [stored] : []);
@@ -139,7 +131,7 @@ for (const [name, handler] of [["GET", GET], ["PATCH", PATCH], ["DELETE", DELETE
     assert.ok(logs.some(args => JSON.stringify(args).includes("42501")));
   });
   test(`${name} handles unexpected thrown failures`, async () => {
-    mock.method(supabase, name === "DELETE" ? "rpc" : "from", () => { throw new Error("private failure"); });
+    mock.method(supabase, "from", () => { throw new Error("private failure"); });
     const response = await handler(request(name, name === "PATCH" ? { completed: true } : undefined), context());
     assert.equal(response.status, 500);
     assert.equal((await response.text()).includes("private failure"), false);

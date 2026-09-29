@@ -59,8 +59,8 @@ Apply `migrations/20260929000002_create_notes.sql` once in the Supabase SQL
 Editor. It creates the notes table, content constraints, timestamps, task
 foreign key, index, and anonymous CRUD policies for the same shared no-auth
 model as tasks. Notes are publicly accessible to anyone with the project key.
-Deleting a task sets its notes' `task_id` to null so they remain in General
-notes. A trigger maintains `updated_at`, including when a task is unlinked.
+The initial migration used `ON DELETE SET NULL`; the current migration below
+changes this to `ON DELETE CASCADE` for task notes. A trigger maintains `updated_at`, including when a task is unlinked.
 The app's public key cannot apply this migration.
 
 Notes endpoints:
@@ -82,46 +82,44 @@ Run `npm test` (Node 22.6+ with TypeScript stripping, or Node 24),
 Tests mock Supabase HTTP responses and never modify live data. Existing task
 CRUD tests are retained alongside the notes tests.
 
-## Clipboard and explicit task deletion
+## Independent clipboard copies and simple deletion
 
-Run **all of `migrations/20260929000003_task_note_lifecycle.sql`** in the Supabase
-SQL Editor before using the updated app. Do not rerun the original create-table
-migration on an existing database. The new migration:
+Run **all of `migrations/20260929000004_simplify_clipboard_notes.sql`** in the
+Supabase SQL Editor before using this version. The tasks/notes tables and their
+existing anonymous CRUD policies must already exist. This migration works with
+or without migration 00003; do not run 00003 after 00004.
 
-- adds nullable `notes.source_task_title`;
-- replaces the task foreign key with `ON DELETE SET NULL` (whatever its old name);
-- creates `delete_task_with_notes`, which locks the task, requires a choice when
-  notes exist, and either detaches or deletes its notes before deleting the task;
-- creates `create_task_with_notes`, which saves a task and its initial notes in
-  one transaction, rolling everything back if any note fails.
+The migration adds `source_task_title` if missing, replaces the task-note foreign
+key with **ON DELETE CASCADE**, updates atomic initial task/note creation, adds
+`save_note_with_clipboard`, and removes the obsolete keep/delete RPC. It does
+not delete existing records. Future task deletions permanently delete attached
+notes. General notes (`task_id = null`) remain independent and are never cascaded.
+Previously detached notes remain general notes; no original association is guessed.
 
-Both functions use invoker permissions and existing anonymous RLS policies.
-There is no service-role bypass. A denied note operation rolls back the task
-deletion. The app deliberately does not fall back to a bare DELETE when the
-migration is missing. The migration does not delete existing tasks or notes.
+Both functions use security invoker permissions and existing RLS. No privileged
+key is used. Do not apply schema changes with the app's public key. Apply the
+migration before deploying this code, since the old foreign key preserves task
+notes instead of deleting them.
 
-`DELETE /api/tasks/:id` is valid without a choice only if there are no attached
-notes. With notes, send `?notes=keep` or `?notes=delete`; omitting the choice
-returns 409. Preserved notes have `task_id = null` and the task's title copied to
-`source_task_title`. The clipboard refreshes after the transaction commits.
+- `DELETE /api/tasks/:id` simply deletes the task; the database cascades task notes.
+  There is no keep/delete query option or multi-choice dialog.
+- POST and PATCH notes accept `add_to_clipboard: true` for a task note. The task
+  note stays attached and a separate general note is created with the task title
+  derived server-side. Both writes are atomic. The response is the task note.
+- Clipboard copies are snapshots, not synchronised links. Editing or deleting
+  either note does not affect the other. Each save with the toggle on creates a
+  new copy; the UI defaults the toggle to off. Turning it off does not delete an
+  existing copy. General note forms do not offer this task-only toggle.
+- `POST /api/tasks` accepts optional `notes: [{ content, add_to_clipboard }]`
+  (up to 50). Each entry creates a task note; checked entries also create a copy.
+- Task PATCH never edits notes. Descriptions are not notes and are deleted with
+  the task; they are never copied automatically.
 
-A task's **description is not a note**. It is deleted with the task. The keep
-option only preserves records previously saved as notes. This migration cannot
-recover descriptions or notes that were already deleted.
+New/supplied due dates must be today or later (UTC calendar day). PATCH requests
+that omit due_date preserve it. The clipboard color menu is a local visual preview
+and resets on reload; no color column or external service is added.
 
-`POST /api/notes` accepts `add_to_clipboard: true` together with `task_id` to
-create one general note with server-derived task-title context. False/omitted
-keeps the note attached. Clients cannot set `source_task_title` directly.
-`POST /api/tasks` accepts optional `notes: [{ content, add_to_clipboard }]`
-(up to 50), using the atomic creation function when the array is nonempty.
-Task PATCH does not edit notes.
-
-New/supplied due dates must be today or later; dates are compared using the UTC
-calendar day in both the browser and server. Existing overdue tasks can still
-be completed, and PATCH requests that omit due_date do not change it.
-
-`supabase/tests/task_note_lifecycle.sql` is an optional SQL Editor regression
-check after the migration. It creates only transaction-local fixtures and ends
-with ROLLBACK. It verifies note preservation, source titles, explicit deletion,
-and rollback when initial-note validation fails. API tests mock database
-responses; this SQL check exercises the actual database functions.
+After the migration, optionally run `supabase/tests/task_note_lifecycle.sql` in
+the SQL Editor. It exercises the real functions and cascading relationship using
+transaction-local fixtures and ends with ROLLBACK. API tests use mocked Supabase
+responses and cannot verify your live foreign key or RLS configuration.

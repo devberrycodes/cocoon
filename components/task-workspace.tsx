@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Task, TaskNoteAction, UpdateTaskInput } from "@/types/task";
+import type { Task, UpdateTaskInput } from "@/types/task";
 import type { Note } from "@/types/note";
 import { apiRequest } from "@/lib/client/api";
 import { useNotes } from "@/lib/client/use-notes";
@@ -33,32 +33,30 @@ export function TaskWorkspace() {
   async function addNote(content: string, taskId: string | null = null, clipboard = false) {
     const note = await apiRequest<Note>("/api/notes", { method: "POST", body: JSON.stringify({ content, task_id: taskId, add_to_clipboard: clipboard }) });
     noteState.setNotes(current => [note, ...current]);
+    if (clipboard) noteState.refresh();
     setMessage(note.task_id === null ? "Note added to the clipboard." : "Task note added.");
   }
-  async function saveNote(id: string, content: string) {
-    const updated = await apiRequest<Note>(`/api/notes/${id}`, { method: "PATCH", body: JSON.stringify({ content }) });
+  async function saveNote(id: string, content: string, clipboard = false) {
+    const updated = await apiRequest<Note>(`/api/notes/${id}`, { method: "PATCH", body: JSON.stringify({ content, add_to_clipboard: clipboard }) });
     noteState.setNotes(current => current.map(note => note.id === id ? updated : note)); setMessage("Note saved.");
+    if (clipboard) noteState.refresh();
   }
   async function deleteNote(id: string) {
     await apiRequest<void>(`/api/notes/${id}`, { method: "DELETE" });
     noteState.setNotes(current => current.filter(note => note.id !== id)); setMessage("Note deleted.");
   }
-  async function deleteTask(task: Task, action?: TaskNoteAction) {
-    await apiRequest<void>(`/api/tasks/${task.id}${action ? `?notes=${action}` : ""}`, { method: "DELETE" });
+  async function deleteTask(task: Task) {
+    await apiRequest<void>(`/api/tasks/${task.id}`, { method: "DELETE" });
     setTasks(current => current.filter(item => item.id !== task.id));
-    // Update immediately, then reconcile with the committed database state.
-    noteState.setNotes(current => action === "keep"
-      ? current.map(note => note.task_id === task.id ? { ...note, task_id: null, source_task_title: task.title } : note)
-      : current.filter(note => note.task_id !== task.id));
-    noteState.refresh();
-    setMessage(action === "keep" ? "Task deleted. Its notes are on the clipboard." : "Task deleted.");
-    requestAnimationFrame(() => document.getElementById(action === "keep" ? "notes-heading" : "tasks-heading")?.focus());
+    noteState.setNotes(current => current.filter(note => note.task_id !== task.id));
+    setMessage("Task and its task notes deleted. Clipboard notes are unchanged.");
+    requestAnimationFrame(() => document.getElementById("tasks-heading")?.focus());
   }
 
   return <div className="workspace">
     <p className="sr-only" role="status">{message}</p>
-    <div className="task-column">
-      <section className="panel" aria-labelledby="create-heading">
+
+      <section className="panel create-panel" aria-labelledby="create-heading">
         <h2 id="create-heading">Add a task</h2>
         <TaskForm disabled={loading || Boolean(error)} onSave={async input => {
           const task = await apiRequest<Task>("/api/tasks", { method: "POST", body: JSON.stringify(input) });
@@ -67,7 +65,7 @@ export function TaskWorkspace() {
           setMessage("Task added.");
         }} />
       </section>
-      <section className="panel" aria-labelledby="tasks-heading">
+      <section className="panel tasks-panel" aria-labelledby="tasks-heading">
         <div className="section-heading">
           <h2 id="tasks-heading" tabIndex={-1}>Your tasks</h2>
           {!loading && !error && <span className="muted">{tasks.filter(task => !task.completed).length} open · {tasks.filter(task => task.completed).length} completed</span>}
@@ -84,8 +82,13 @@ export function TaskWorkspace() {
             onSaveNote={saveNote} onDeleteNote={deleteNote} />)}
         </ul>
       </section>
-    </div>
+    <div className="clipboard-column">
     <NotesPanel notes={noteState.notes.filter(note => note.task_id === null)} loading={noteState.loading} error={noteState.error}
       onRetry={noteState.refresh} onAdd={content => addNote(content)} onSave={saveNote} onDelete={deleteNote} />
+      <aside className="panel spotify-placeholder" aria-labelledby="spotify-heading">
+        <span className="pixel-music" aria-hidden="true">♫</span>
+        <div><h2 id="spotify-heading">A little background music</h2><p className="muted">Spotify · coming later</p><p className="muted">Your music corner. No playback connected yet.</p></div>
+      </aside>
+    </div>
   </div>;
 }

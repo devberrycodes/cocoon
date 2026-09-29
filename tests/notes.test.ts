@@ -195,3 +195,16 @@ for (const [name, action] of [
     assert.ok(logs.length > 0);
   });
 }
+
+for (const task_id of [null, taskId]) {
+  test(`editing and deleting ${task_id === null ? "general" : "task"} notes preserves independent copies`, async () => {
+    const copy = { ...note, id: "00000000-0000-4000-8000-000000000003", task_id: null, source_task_title: "Source task" };
+    rows = [{ ...note, task_id }, copy];
+    const response = await detail.PATCH(request("PATCH", { content: "Edited independently", add_to_clipboard: false }), context());
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).task_id, task_id);
+    assert.deepEqual(rows[1], copy);
+    assert.equal((await detail.DELETE(request("DELETE"), context())).status, 204);
+    assert.deepEqual(rows, [copy]);
+  });
+}

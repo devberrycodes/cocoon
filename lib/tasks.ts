@@ -1,6 +1,6 @@
 import type { InitialTaskNote } from "../types/note.ts";
 import { supabase } from "./supabase.ts";
-import type { CreateTaskInput, Task, TaskNoteAction, UpdateTaskInput } from "../types/task.ts";
+import type { CreateTaskInput, Task, UpdateTaskInput } from "../types/task.ts";
 
 const taskColumns =
   "id, title, description, completed, priority, due_date, created_at, updated_at";
@@ -26,22 +26,13 @@ export async function updateTask(id: string, input: UpdateTaskInput): Promise<Ta
   return data;
 }
 
-export class TaskNotesChoiceRequiredError extends Error {}
-
-export async function deleteTask(id: string, noteAction?: TaskNoteAction): Promise<boolean> {
-  const { data: result, error } = await supabase.rpc("delete_task_with_notes", {
-    p_task_id: id, p_note_action: noteAction ?? null,
-  });
-  const data: unknown = result;
+export async function deleteTask(id: string): Promise<boolean> {
+  const { data, error } = await supabase.from("tasks").delete().eq("id", id).select("id").maybeSingle<Pick<Task, "id">>();
   if (error) {
     console.error("Supabase task delete error:", { code: error.code });
     throw new Error("Unable to delete task.");
   }
-  if (!data || typeof data !== "object" || !("status" in data)) throw new Error("Unable to delete task.");
-  if (data.status === "notes_choice_required") throw new TaskNotesChoiceRequiredError();
-  if (data.status === "not_found") return false;
-  if (data.status !== "deleted") throw new Error("Unable to delete task.");
-  return true;
+  return data !== null;
 }
 
 export async function listTasks(): Promise<Task[]> {
