@@ -13,6 +13,7 @@ export interface Task {
   /** ISO timestamp strings returned by the database. */
   created_at: string;
   updated_at: string;
+  is_sample?: boolean;
 }
 
 export type CreateTaskInput = Pick<Task, "title"> &

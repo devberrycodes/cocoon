@@ -8,6 +8,7 @@ export interface Note {
   source_task_title: string | null;
   created_at: string;
   updated_at: string;
+  is_sample?: boolean;
 }
 
 export type CreateNoteInput = Pick<Note, "content"> & Partial<Pick<Note, "task_id" | "color">> & { add_to_clipboard?: boolean };

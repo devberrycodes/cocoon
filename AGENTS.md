@@ -1,6 +1,6 @@
 # Cocoon Development Instructions
 
-These instructions apply throughout this repository. Keep changes appropriate in scope for HNG Internship Stage 1.
+These instructions apply throughout this repository. Keep changes appropriate in scope.
 
 ## 1. Purpose and Required Features
 

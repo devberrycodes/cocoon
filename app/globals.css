@@ -443,3 +443,78 @@ body:has(.focus-launcher) .main-content { padding-bottom: 180px; }
   .brand-tagline { font-size: .65rem; }
 }
 @media (prefers-reduced-motion: reduce) { .music-rail.is-collapsed:has(.music-disc.is-playing) .panel-toggle svg { animation: none; } }
+.delete-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+
+  display: grid;
+  place-items: center;
+
+  padding: 24px;
+
+  background: rgba(31, 18, 21, 0.42);
+  backdrop-filter: blur(4px);
+}
+
+.delete-modal {
+  width: min(100%, 390px);
+
+  padding: 24px;
+
+  border: 1px solid rgba(99, 45, 58, 0.18);
+  border-radius: 20px;
+
+  background: #fff8f5;
+
+  box-shadow:
+    0 24px 70px rgba(40, 18, 24, 0.2);
+
+  color: #44232c;
+}
+
+.delete-modal h2 {
+  margin: 0 0 10px;
+
+  font-size: 1.2rem;
+}
+
+.delete-modal p {
+  margin: 0;
+
+  line-height: 1.55;
+  color: #6d5057;
+}
+
+.delete-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+
+  margin-top: 24px;
+}
+
+.delete-modal-confirm {
+  border-color: #792e43;
+  background: #792e43;
+  color: white;
+}
+
+.delete-modal-confirm:hover {
+  background: #632337;
+}
+
+@media (max-width: 480px) {
+  .delete-modal {
+    padding: 20px;
+    border-radius: 18px;
+  }
+
+  .delete-modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .delete-modal-actions .button {
+    width: 100%;
+  }
+}
